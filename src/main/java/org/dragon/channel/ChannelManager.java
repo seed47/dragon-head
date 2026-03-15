@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.dragon.channel.adapter.ChannelAdapter;
+import org.dragon.channel.entity.ActionMessage;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.gateway.Gateway;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,15 +83,14 @@ public class ChannelManager {
     }
 
     // 提供给 Gateway 或大模型使用的统一发送入口 (下行路由分发)
-    public CompletableFuture<Void> routeMessageOutbound(String targetChannel, String targetUser, NormalizedMessage msg) {
-        ChannelAdapter adapter = registry.get(targetChannel);
+    public CompletableFuture<Void> routeMessageOutbound(ActionMessage message) {
+        ChannelAdapter adapter = registry.get(message.getChannelName());
         if (adapter == null) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("未找到对应的channel: " + targetChannel));
+            return CompletableFuture.failedFuture(new IllegalArgumentException("未找到对应的channel: " + message.getChannelName()));
         }
-        return adapter.sendMessage(targetUser, msg);
+        return adapter.sendMessage(message);
     }
 
-    // Spring Boot 关闭时自动执行，优雅释放 Netty 资源
     @PreDestroy
     public void stopAllChannels() {
         log.info("[Manager] 服务中止，正在关闭所有channel...");

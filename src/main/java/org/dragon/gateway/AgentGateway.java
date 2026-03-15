@@ -2,6 +2,9 @@ package org.dragon.gateway;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dragon.channel.ChannelManager;
+import org.dragon.channel.entity.ActionMessage;
+import org.dragon.channel.entity.ActionType;
+import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -30,15 +33,9 @@ public class AgentGateway implements Gateway {
         CompletableFuture.runAsync(() -> {
             try {
                 // 1.模拟大模型思考的过程
-                String aiReplyText = mockCallLlmBrain(inboundMsg.getTextContent());
-                // 2.组装返回内容
-                NormalizedMessage outboundMsg = new NormalizedMessage.Builder()
-                        .channel(inboundMsg.getChannel())
-                        .senderId(inboundMsg.getSenderId())
-                        .textContent(aiReplyText)
-                        .build();
-                // 3.发送消息
-                channelManager.routeMessageOutbound(inboundMsg.getChannel(), inboundMsg.getSenderId(), outboundMsg);
+                ActionMessage actionMessage = mockCallLlmBrain(inboundMsg);
+                // 2.返回消息
+                channelManager.routeMessageOutbound(actionMessage);
             } catch (Exception e) {
                 log.error("[gateway] 返回消息失败");
             }
@@ -46,12 +43,17 @@ public class AgentGateway implements Gateway {
     }
 
 
-    private String mockCallLlmBrain(String content) {
-        try {
-            // 模拟大模型思考了 2 秒钟
-            Thread.sleep(2000);
-        } catch (InterruptedException ignored) {}
-        return content;
+    private ActionMessage mockCallLlmBrain(NormalizedMessage inboundMsg) {
+        ActionMessage actionMessage = new ActionMessage();
+        actionMessage.setChannelName("Feishu");
+        actionMessage.setActionType(ActionType.REPLY);
+        actionMessage.setQuoteMessageId(inboundMsg.getMessageId());
+        actionMessage.setMessageType("text");
+        actionMessage.setContent("你刚刚给我发了 '" + inboundMsg.getTextContent() +"' 我选择不回复你");
+        MentionConfig mentionConfig = new MentionConfig();
+        mentionConfig.setMentionOpenId(inboundMsg.getSenderId());
+        actionMessage.setMentionConfig(mentionConfig);
+        return actionMessage;
     }
 
 }
