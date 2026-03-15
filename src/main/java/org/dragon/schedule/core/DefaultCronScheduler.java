@@ -16,12 +16,13 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * 默认 Cron 调度器实现
  */
 @Slf4j
-public class DefaultCronScheduler implements CronScheduler, TriggerManager, ScheduleEngine {
+public class DefaultCronScheduler implements CronScheduler, TriggerManager {
 
     private final CronStore cronStore;
     private final ExecutionHistoryStore executionHistoryStore;
@@ -155,11 +156,6 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager, Sche
     }
 
     @Override
-    public void triggerNow(String cronId) {
-        triggerNow(cronId);
-    }
-
-    @Override
     public Optional<CronDefinition> getCron(String cronId) {
         return Optional.ofNullable(cronDefinitions.get(cronId));
     }
@@ -273,66 +269,6 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager, Sche
     @Override
     public Long getPreviousFireTime(String cronId) {
         return previousFireTimes.get(cronId);
-    }
-
-    // ==================== ScheduleEngine Implementation ====================
-
-    @Override
-    public void start() {
-        // 已经在 CronScheduler.start() 中调用
-    }
-
-    @Override
-    public void stop() {
-        // 已经在 CronScheduler.stop() 中调用
-    }
-
-    @Override
-    public void schedule(CronDefinition definition) {
-        createTrigger(definition);
-    }
-
-    @Override
-    public void unschedule(String cronId) {
-        removeTrigger(cronId);
-    }
-
-    @Override
-    public void reschedule(CronDefinition definition) {
-        updateTrigger(definition);
-    }
-
-    @Override
-    public void pause(String cronId) {
-        pauseTrigger(cronId);
-    }
-
-    @Override
-    public void resume(String cronId) {
-        resumeTrigger(cronId);
-    }
-
-    @Override
-    public void trigger(String cronId) {
-        triggerNow(cronId);
-    }
-
-    @Override
-    public boolean isScheduled(String cronId) {
-        return hasTrigger(cronId);
-    }
-
-    @Override
-    public List<String> getScheduledCronIds() {
-        return new ArrayList<>(scheduledTasks.keySet());
-    }
-
-    @Override
-    public ScheduleEngineState getState() {
-        if (running.get()) {
-            return ScheduleEngineState.RUNNING;
-        }
-        return ScheduleEngineState.STOPPED;
     }
 
     // ==================== Private Methods ====================

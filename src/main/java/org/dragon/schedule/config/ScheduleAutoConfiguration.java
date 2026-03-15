@@ -2,6 +2,7 @@ package org.dragon.schedule.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dragon.schedule.core.*;
+import org.dragon.schedule.entity.CronDefinition;
 import org.dragon.schedule.executor.DefaultJobExecutor;
 import org.dragon.schedule.executor.JobExecutor;
 import org.dragon.schedule.lock.DistributedLock;
