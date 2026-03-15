@@ -8,6 +8,7 @@ import org.dragon.channel.entity.Attachment;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.util.GsonUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -21,6 +22,9 @@ import java.util.Map;
  */
 @Component
 public class FeishuParser {
+
+    @Value("${channel.feishu.robotOpenId}")
+    private String robotOpenId;
 
     public NormalizedMessage parseInbound(P2MessageReceiveV1 p2MessageReceiveV1, String channelName) {
         EventMessage message = p2MessageReceiveV1.getEvent().getMessage();
@@ -43,7 +47,7 @@ public class FeishuParser {
                         String key = mention.getKey();
                         String name = mention.getName();
                         String openId = mention.getId().getOpenId();
-                        if (StringUtils.equals(openId, "ou_ee35d0ed85f54152cb2cce7b2d363431")) {
+                        if (StringUtils.equals(openId, robotOpenId)) {
                             // 如果是@机器人自己，直接从文本中剥离
                             textContent = textContent.replace(key, "");
                         } else {
