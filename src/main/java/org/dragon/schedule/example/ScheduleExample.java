@@ -97,9 +97,7 @@ public class ScheduleExample implements CommandLineRunner {
         CronDefinition job = CronDefinition.builder()
                 .id("frequent-job")
                 .name("高频任务")
-                .description("每5秒执行一次的任务")
                 .cronExpression("0/5 * * * * ?")  // 每5秒
-                .timezone("Asia/Shanghai")
                 .jobType(JobType.SPRING_BEAN)
                 .jobHandler("demoJobHandler")
                 .status(CronStatus.ENABLED)
@@ -120,15 +118,11 @@ public class ScheduleExample implements CommandLineRunner {
         CronDefinition job = CronDefinition.builder()
                 .id("minutely-job")
                 .name("分钟级任务")
-                .description("每分钟执行一次的数据同步")
                 .cronExpression("0 * * * * ?")  // 每分钟
-                .timezone("Asia/Shanghai")
                 .jobType(JobType.SPRING_BEAN)
                 .jobHandler("dataSyncJobHandler")
                 .status(CronStatus.ENABLED)
                 .timeoutMs(50000)  // 50秒超时
-                .retryCount(2)
-                .retryIntervalMs(5000)
                 .createdAt(System.currentTimeMillis())
                 .updatedAt(System.currentTimeMillis())
                 .version(0)
@@ -145,13 +139,10 @@ public class ScheduleExample implements CommandLineRunner {
         CronDefinition job = CronDefinition.builder()
                 .id("hourly-job")
                 .name("小时级任务")
-                .description("每小时执行一次的报表生成")
                 .cronExpression("0 0 * * * ?")  // 每小时
-                .timezone("Asia/Shanghai")
                 .jobType(JobType.SPRING_BEAN)
                 .jobHandler("reportJobHandler")
                 .status(CronStatus.ENABLED)
-                .maxConcurrent(1)  // 禁止并发执行
                 .timeoutMs(300000)  // 5分钟超时
                 .createdAt(System.currentTimeMillis())
                 .updatedAt(System.currentTimeMillis())
@@ -169,16 +160,12 @@ public class ScheduleExample implements CommandLineRunner {
         CronDefinition job = CronDefinition.builder()
                 .id("daily-job")
                 .name("每日任务")
-                .description("每天早上8点执行的数据备份")
                 .cronExpression("0 0 8 * * ?")  // 每天8点
-                .timezone("Asia/Shanghai")
                 .jobType(JobType.SPRING_BEAN)
                 .jobHandler("backupJobHandler")
                 .status(CronStatus.ENABLED)
                 .misfirePolicy(MisfirePolicy.FIRE_NOW)  // 错过立即触发
                 .timeoutMs(600000)  // 10分钟超时
-                .retryCount(3)
-                .retryIntervalMs(10000)
                 .createdAt(System.currentTimeMillis())
                 .updatedAt(System.currentTimeMillis())
                 .version(0)
@@ -205,15 +192,12 @@ public class ScheduleExample implements CommandLineRunner {
         CronDefinition job = CronDefinition.builder()
                 .id("api-call-job")
                 .name("API调用任务")
-                .description("调用外部API获取数据")
                 .cronExpression("0 */5 * * * ?")  // 每5分钟
-                .timezone("Asia/Shanghai")
                 .jobType(JobType.SPRING_BEAN)
                 .jobHandler("apiCallJobHandler")
                 .jobData(jobData)
                 .status(CronStatus.ENABLED)
                 .timeoutMs(30000)
-                .retryCount(2)
                 .createdAt(System.currentTimeMillis())
                 .updatedAt(System.currentTimeMillis())
                 .version(0)

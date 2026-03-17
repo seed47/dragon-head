@@ -170,9 +170,6 @@ class CriticalJobHandler implements JobHandler {
     public Object execute(CronDefinition definition, JobContext context) throws Exception {
         log.info("[Critical] Starting critical business task");
         log.info("  Execution ID: {}", context.getExecutionId());
-        log.info("  Retry count: {}/{}", 
-                context.getRefireCount(), 
-                definition.getRetryCount());
 
         try {
             processCriticalBusiness();

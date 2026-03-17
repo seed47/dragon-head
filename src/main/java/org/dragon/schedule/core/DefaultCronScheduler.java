@@ -2,12 +2,13 @@ package org.dragon.schedule.core;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dragon.schedule.config.ScheduleProperties;
-import org.dragon.schedule.entity.*;
+import org.dragon.schedule.entity.CronDefinition;
+import org.dragon.schedule.entity.CronStatus;
+import org.dragon.schedule.entity.ExecutionHistory;
+import org.dragon.schedule.entity.JobContext;
 import org.dragon.schedule.executor.JobExecutor;
 import org.dragon.schedule.lock.DistributedLock;
 import org.dragon.schedule.parser.CronExpression;
-import org.dragon.schedule.store.CronStore;
-import org.dragon.schedule.store.ExecutionHistoryStore;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -24,8 +25,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DefaultCronScheduler implements CronScheduler, TriggerManager {
 
-    private final CronStore cronStore;
-    private final ExecutionHistoryStore executionHistoryStore;
     private final JobExecutor jobExecutor;
     private final DistributedLock distributedLock;
     private final ScheduleProperties properties;
@@ -38,13 +37,9 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicInteger executionCounter = new AtomicInteger(0);
 
-    public DefaultCronScheduler(CronStore cronStore,
-                                ExecutionHistoryStore executionHistoryStore,
-                                JobExecutor jobExecutor,
+    public DefaultCronScheduler(JobExecutor jobExecutor,
                                 DistributedLock distributedLock,
                                 ScheduleProperties properties) {
-        this.cronStore = cronStore;
-        this.executionHistoryStore = executionHistoryStore;
         this.jobExecutor = jobExecutor;
         this.distributedLock = distributedLock;
         this.properties = properties;
@@ -183,13 +178,11 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
     public void createTrigger(CronDefinition definition) {
         String cronId = definition.getId();
         String cronExpression = definition.getCronExpression();
-        String timezone = definition.getTimezone();
 
-        ZoneId zoneId = timezone != null ? ZoneId.of(timezone) : ZoneId.systemDefault();
 
         // 计算下次触发时间
         long now = System.currentTimeMillis();
-        Long nextFireTime = calculateNextFireTime(cronExpression, zoneId, now);
+        Long nextFireTime = calculateNextFireTime(cronExpression, now);
 
         if (nextFireTime == null) {
             log.warn("No next fire time calculated for cron: id={}, expression={}", cronId, cronExpression);
@@ -199,7 +192,7 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
         nextFireTimes.put(cronId, nextFireTime);
 
         // 调度任务
-        scheduleTask(cronId, definition, nextFireTime, zoneId);
+        scheduleTask(cronId, definition, nextFireTime);
 
         log.debug("Created trigger for cron: id={}, nextFireTime={}", cronId, new Date(nextFireTime));
     }
@@ -273,9 +266,9 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
 
     // ==================== Private Methods ====================
 
-    private Long calculateNextFireTime(String cronExpression, ZoneId zoneId, long afterTime) {
+    private Long calculateNextFireTime(String cronExpression, long afterTime) {
         try {
-            CronExpression expression = CronExpression.parse(cronExpression, zoneId);
+            CronExpression expression = CronExpression.parse(cronExpression);
             return expression.getNextValidTimeAfter(afterTime);
         } catch (Exception e) {
             log.error("Failed to calculate next fire time: expression={}, error={}", 
@@ -284,7 +277,7 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
         }
     }
 
-    private void scheduleTask(String cronId, CronDefinition definition, long fireTime, ZoneId zoneId) {
+    private void scheduleTask(String cronId, CronDefinition definition, long fireTime) {
         long now = System.currentTimeMillis();
         long delay = fireTime - now;
 
@@ -310,13 +303,12 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
                 // 计算并调度下次触发
                 Long nextFireTime = calculateNextFireTime(
                         definition.getCronExpression(), 
-                        zoneId, 
                         System.currentTimeMillis()
                 );
 
                 if (nextFireTime != null) {
                     nextFireTimes.put(cronId, nextFireTime);
-                    scheduleTask(cronId, definition, nextFireTime, zoneId);
+                    scheduleTask(cronId, definition, nextFireTime);
                 }
 
             } catch (Exception e) {
@@ -345,9 +337,7 @@ public class DefaultCronScheduler implements CronScheduler, TriggerManager {
                 context.setPrevFireTime(previousFireTimes.get(definition.getId()));
 
                 // 计算下次触发时间
-                String timezone = definition.getTimezone();
-                ZoneId zoneId = timezone != null ? ZoneId.of(timezone) : ZoneId.systemDefault();
-                Long nextFireTime = calculateNextFireTime(definition.getCronExpression(), zoneId, fireTime);
+                Long nextFireTime = calculateNextFireTime(definition.getCronExpression(), fireTime);
                 context.setNextFireTime(nextFireTime);
 
                 // 执行

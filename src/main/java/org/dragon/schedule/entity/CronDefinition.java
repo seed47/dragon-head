@@ -22,14 +22,10 @@ public class CronDefinition {
 
     // ==================== 基本信息 ====================
     private String name;
-    private String description;
-    private String createdBy;
 
     // ==================== 调度配置 ====================
+    private CronType cronType;
     private String cronExpression;
-    private String timezone;
-    private Long startTime;
-    private Long endTime;
 
     // ==================== 任务配置 ====================
     private JobType jobType;
@@ -38,10 +34,7 @@ public class CronDefinition {
 
     // ==================== 执行策略 ====================
     private MisfirePolicy misfirePolicy;
-    private Integer maxConcurrent;
     private Integer timeoutMs;
-    private Integer retryCount;
-    private Integer retryIntervalMs;
 
     // ==================== 状态管理 ====================
     private CronStatus status;
@@ -63,6 +56,10 @@ public class CronDefinition {
             result.addError("name", "任务名称不能为空");
         }
 
+        if (cronType == null) {
+            result.addError("cronType", "cronType不能为空");
+        }
+
         if (cronExpression == null || cronExpression.trim().isEmpty()) {
             result.addError("cronExpression", "Cron 表达式不能为空");
         }
@@ -72,27 +69,6 @@ public class CronDefinition {
         }
 
         return result;
-    }
-
-    /**
-     * 检查是否应在当前时间触发
-     */
-    public boolean shouldFireAt(long timestamp) {
-        // 检查状态
-        if (status != CronStatus.ENABLED) {
-            return false;
-        }
-
-        // 检查生效时间范围
-        if (startTime != null && timestamp < startTime) {
-            return false;
-        }
-
-        if (endTime != null && timestamp > endTime) {
-            return false;
-        }
-
-        return true;
     }
 
     /**

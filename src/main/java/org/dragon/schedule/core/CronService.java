@@ -8,7 +8,6 @@ import org.dragon.schedule.entity.ValidationResult;
 import org.dragon.schedule.parser.CronExpression;
 import org.dragon.schedule.store.CronStore;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,7 +37,7 @@ public class CronService {
         }
 
         // 验证 Cron 表达式
-        validateCronExpression(definition.getCronExpression(), definition.getTimezone());
+        validateCronExpression(definition.getCronExpression());
 
         // 生成 ID
         if (definition.getId() == null) {
@@ -88,7 +87,7 @@ public class CronService {
         }
 
         // 验证 Cron 表达式
-        validateCronExpression(definition.getCronExpression(), definition.getTimezone());
+        validateCronExpression(definition.getCronExpression());
 
         // 检查是否存在
         Optional<CronDefinition> existing = cronStore.findById(definition.getId());
@@ -254,10 +253,9 @@ public class CronService {
     /**
      * 验证 Cron 表达式
      */
-    private void validateCronExpression(String expression, String timezone) {
+    private void validateCronExpression(String expression) {
         try {
-            ZoneId zoneId = timezone != null ? ZoneId.of(timezone) : ZoneId.systemDefault();
-            CronExpression.parse(expression, zoneId);
+            CronExpression.parse(expression);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid cron expression: " + expression + ", error: " + e.getMessage());
         }

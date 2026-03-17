@@ -23,7 +23,6 @@ public class CronExpression {
     private final CronField years;  // 可选
 
     private final String expression;
-    private final ZoneId zoneId;
 
     // 默认值
     private static final int DEFAULT_SECONDS = 0;
@@ -31,12 +30,11 @@ public class CronExpression {
     /**
      * 构造函数
      */
-    private CronExpression(String expression, ZoneId zoneId,
+    private CronExpression(String expression,
                           CronField seconds, CronField minutes, CronField hours,
                           CronField daysOfMonth, CronField months, CronField daysOfWeek,
                           CronField years) {
         this.expression = expression;
-        this.zoneId = zoneId;
         this.seconds = seconds;
         this.minutes = minutes;
         this.hours = hours;
@@ -102,7 +100,7 @@ public class CronExpression {
                 ". Expected 5, 6, or 7 fields, but got " + parts.length);
         }
 
-        return new CronExpression(expression, zoneId, 
+        return new CronExpression(expression,
                 seconds, minutes, hours, daysOfMonth, months, daysOfWeek, years);
     }
 
@@ -114,7 +112,7 @@ public class CronExpression {
      */
     public Long getNextValidTimeAfter(long afterTime) {
         ZonedDateTime afterDateTime = ZonedDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(afterTime), zoneId);
+                java.time.Instant.ofEpochMilli(afterTime), ZoneId.systemDefault());
         
         // 从下一秒开始计算
         ZonedDateTime nextTime = afterDateTime.plusSeconds(1).withNano(0);
