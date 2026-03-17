@@ -5,7 +5,6 @@ import java.util.Optional;
 import org.dragon.agent.llm.LLMRequest;
 import org.dragon.agent.llm.LLMResponse;
 import org.dragon.agent.llm.caller.LLMCaller;
-import org.dragon.agent.model.ModelRegistry;
 import org.dragon.agent.tool.ToolConnector;
 import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.mind.memory.MemoryAccess;
@@ -15,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * ReAct 执行器
- * 实现 ReAct 循环框架，允许 LLM 自主决定下一步行动
+ * 实现 ReAct (Reasoning + Acting) 循环框架
+ *
+ * 流程：Thought -> Action -> Observation -> Thought -> ... -> Finish
  *
  * @author wyj
  * @version 1.0
@@ -27,16 +28,13 @@ public class ReActExecutor {
     private final LLMCaller llmCaller;
     private final ToolRegistry toolRegistry;
     private final MemoryAccess memoryAccess;
-    private final ModelRegistry modelRegistry;
 
     public ReActExecutor(LLMCaller llmCaller,
                          ToolRegistry toolRegistry,
-                         MemoryAccess memoryAccess,
-                         ModelRegistry modelRegistry) {
+                         MemoryAccess memoryAccess) {
         this.llmCaller = llmCaller;
         this.toolRegistry = toolRegistry;
         this.memoryAccess = memoryAccess;
-        this.modelRegistry = modelRegistry;
     }
 
     /**
@@ -46,130 +44,144 @@ public class ReActExecutor {
      * @return 执行结果
      */
     public ReActResult execute(ReActContext context) {
-        // 循环: Thought -> Action -> Observation
+        log.info("[ReAct] Starting ReAct loop for execution: {}", context.getExecutionId());
+
+        // ReAct 循环：Thought -> Action -> Observation
         while (!context.isComplete() && context.incrementIteration() <= context.getMaxIterations()) {
             try {
-                // 支持为每个步骤指定不同模型，默认使用 context 中的模型
-                String modelId = context.getCurrentModelId();
+                log.debug("[ReAct] Iteration {} started", context.getCurrentIteration());
 
-                // 构建 prompt
-                String prompt = buildPrompt(context);
+                // Step 1: Thought - 让 LLM 分析并决定下一步行动
+                String thought = think(context);
 
-                // 调用 LLM
-                LLMRequest request = LLMRequest.builder()
-                        .modelId(modelId)
-                        .messages(java.util.Collections.singletonList(
-                                LLMRequest.LLMMessage.builder()
-                                        .role(LLMRequest.LLMMessage.Role.USER)
-                                        .content(prompt)
-                                        .build()
-                        ))
-                        .systemPrompt(context.getSystemPrompt())
-                        .build();
+                // Step 2: Action - 根据思考执行动作
+                String actionResult = act(context, thought);
 
-                LLMResponse response = llmCaller.call(request);
-                String thought = response.getContent();
-
-                context.addThought(thought);
-
-                // 解析动作
-                Action action = parseAction(thought);
-                if (action == null) {
-                    // 无法解析动作，直接返回当前思考作为响应
-                    context.complete(thought);
-                    break;
-                }
-
-                context.addAction(action);
-
-                // 执行动作
-                String result;
-                if (action.getModelId() != null) {
-                    // 动作执行也可指定模型
-                    modelId = action.getModelId();
-                    result = executeAction(action, modelId);
-                } else {
-                    result = executeAction(action, modelId);
-                }
-
-                context.addObservation(result);
-
-                // 检查是否需要切换模型
-                if (context.hasModelSwitch()) {
-                    modelId = context.getNextModelId();
-                }
+                // Step 3: Observation - 观察动作结果
+                observe(context, actionResult);
 
                 // 检查是否应该结束
-                if (action.getType() == Action.ActionType.FINISH) {
-                    context.complete(result);
+                if (shouldFinish(context)) {
+                    context.complete(actionResult);
+                    log.info("[ReAct] Execution completed at iteration {}", context.getCurrentIteration());
                     break;
                 }
 
             } catch (Exception e) {
-                log.error("[ReAct] Execution error at iteration: {}", context.getCurrentIteration(), e);
-                context.addObservation("Error: " + e.getMessage());
-
-                if (context.getCurrentIteration() >= context.getMaxIterations()) {
-                    context.complete("执行达到最大迭代次数");
-                }
+                log.error("[ReAct] Error at iteration: {}", context.getCurrentIteration(), e);
+                handleError(context, e);
             }
         }
 
-        return ReActResult.builder()
-                .executionId(context.getExecutionId())
-                .success(context.isComplete())
-                .response(context.getFinalResponse())
-                .iterations(context.getCurrentIteration())
-                .thoughts(context.getThoughts())
-                .actions(context.getActions())
-                .observations(context.getObservations())
-                .errorMessage(context.getErrorMessage())
+        // 检查是否达到最大迭代次数
+        if (!context.isComplete() && context.getCurrentIteration() >= context.getMaxIterations()) {
+            context.complete("达到最大迭代次数");
+            log.warn("[ReAct] Max iterations reached: {}", context.getMaxIterations());
+        }
+
+        return buildResult(context);
+    }
+
+    // ==================== ReAct 步骤方法 ====================
+
+    /**
+     * Step 1: Thought
+     * 让 LLM 分析问题，决定下一步行动
+     *
+     * @param context 执行上下文
+     * @return LLM 的思考结果
+     */
+    private String think(ReActContext context) {
+        String modelId = resolveModelId(context);
+        String prompt = buildThoughtPrompt(context);
+
+        LLMRequest request = LLMRequest.builder()
+                .modelId(modelId)
+                .messages(java.util.Collections.singletonList(
+                        LLMRequest.LLMMessage.builder()
+                                .role(LLMRequest.LLMMessage.Role.USER)
+                                .content(prompt)
+                                .build()
+                ))
+                .systemPrompt(context.getSystemPrompt())
                 .build();
+
+        LLMResponse response = llmCaller.call(request);
+        String thought = response.getContent();
+
+        context.addThought(thought);
+        log.debug("[ReAct] Thought: {}", thought);
+
+        return thought;
     }
 
     /**
-     * 构建 Prompt
+     * Step 2: Action
+     * 解析思考结果，执行相应的动作
      *
-     * @param context 上下文
-     * @return Prompt
+     * @param context 执行上下文
+     * @param thought 思考结果
+     * @return 动作执行结果
      */
-    private String buildPrompt(ReActContext context) {
-        StringBuilder prompt = new StringBuilder();
-
-        prompt.append("用户输入: ").append(context.getUserInput()).append("\n\n");
-
-        if (!context.getThoughts().isEmpty()) {
-            prompt.append("之前的思考:\n");
-            for (int i = 0; i < context.getThoughts().size(); i++) {
-                prompt.append(i + 1).append(". ").append(context.getThoughts().get(i)).append("\n");
-            }
-            prompt.append("\n");
+    private String act(ReActContext context, String thought) {
+        // 解析动作
+        Action action = parseAction(thought);
+        if (action == null) {
+            log.warn("[ReAct] Failed to parse action from thought");
+            return "无法解析动作";
         }
 
-        if (!context.getActions().isEmpty()) {
-            prompt.append("之前的动作:\n");
-            for (int i = 0; i < context.getActions().size(); i++) {
-                Action a = context.getActions().get(i);
-                prompt.append(i + 1).append(". ").append(a.getType()).append(": ");
-                if (a.getToolName() != null) {
-                    prompt.append(a.getToolName());
-                }
-                prompt.append("\n");
-            }
-            prompt.append("\n");
+        context.addAction(action);
+        log.debug("[ReAct] Action: {} - {}", action.getType(), action.getToolName());
+
+        // 执行动作
+        String modelId = resolveModelId(context, action);
+        return executeAction(action, modelId);
+    }
+
+    /**
+     * Step 3: Observation
+     * 记录动作执行结果到上下文
+     *
+     * @param context 执行上下文
+     * @param result 动作执行结果
+     */
+    private void observe(ReActContext context, String result) {
+        context.addObservation(result);
+        log.debug("[ReAct] Observation: {}", result);
+    }
+
+    // ==================== 辅助方法 ====================
+
+    /**
+     * 判断是否应该结束执行
+     *
+     * @param context 执行上下文
+     * @return 是否应该结束
+     */
+    private boolean shouldFinish(ReActContext context) {
+        if (context.getActions().isEmpty()) {
+            return false;
         }
 
-        if (!context.getObservations().isEmpty()) {
-            prompt.append("观察结果:\n");
-            for (int i = 0; i < context.getObservations().size(); i++) {
-                prompt.append(i + 1).append(". ").append(context.getObservations().get(i)).append("\n");
-            }
-            prompt.append("\n");
+        Action lastAction = context.getActions().get(context.getActions().size() - 1);
+        return lastAction.getType() == Action.ActionType.FINISH
+                || lastAction.getType() == Action.ActionType.RESPOND;
+    }
+
+    /**
+     * 处理错误
+     *
+     * @param context 执行上下文
+     * @param e 异常
+     */
+    private void handleError(ReActContext context, Exception e) {
+        String errorMsg = "Error: " + e.getMessage();
+        context.addObservation(errorMsg);
+
+        if (context.getCurrentIteration() >= context.getMaxIterations()) {
+            context.complete("执行达到最大迭代次数");
         }
-
-        prompt.append("请根据上述信息，给出下一步的行动和思考。\n");
-
-        return prompt.toString();
     }
 
     /**
@@ -180,18 +192,59 @@ public class ReActExecutor {
      */
     private Action parseAction(String thought) {
         // TODO: 实现更复杂的动作解析逻辑
-        // 这里简单模拟：如果包含特定关键词则执行对应动作
+        // 可以使用 JSON 解析、正则匹配等方式
 
-        if (thought.contains("FINISH") || thought.contains("完成") || thought.contains("回复")) {
+        if (thought.contains("FINISH") || thought.contains("完成")) {
             return Action.builder()
                     .type(Action.ActionType.FINISH)
+                    .build();
+        }
+
+        if (thought.contains("TOOL:") || thought.contains("工具:")) {
+            // 提取工具名称
+            String toolName = extractToolName(thought);
+            return Action.builder()
+                    .type(Action.ActionType.TOOL)
+                    .toolName(toolName)
                     .build();
         }
 
         // 默认为响应动作
         return Action.builder()
                 .type(Action.ActionType.RESPOND)
+                .toolName(thought)
                 .build();
+    }
+
+    /**
+     * 从思考中提取工具名称
+     *
+     * @param thought 思考内容
+     * @return 工具名称
+     */
+    private String extractToolName(String thought) {
+        // 简单实现：查找 TOOL: 后面的内容
+        int index = thought.indexOf("TOOL:");
+        if (index >= 0) {
+            String after = thought.substring(index + 5).trim();
+            int spaceIndex = after.indexOf(' ');
+            if (spaceIndex > 0) {
+                return after.substring(0, spaceIndex);
+            }
+            return after;
+        }
+
+        index = thought.indexOf("工具:");
+        if (index >= 0) {
+            String after = thought.substring(index + 3).trim();
+            int spaceIndex = after.indexOf(' ');
+            if (spaceIndex > 0) {
+                return after.substring(0, spaceIndex);
+            }
+            return after;
+        }
+
+        return null;
     }
 
     /**
@@ -218,11 +271,7 @@ public class ReActExecutor {
                 ).toString();
             }
 
-            case RESPOND -> {
-                return action.getToolName();
-            }
-
-            case FINISH -> {
+            case RESPOND, FINISH -> {
                 return action.getToolName();
             }
 
@@ -230,5 +279,106 @@ public class ReActExecutor {
                 return "Unknown action type";
             }
         }
+    }
+
+    /**
+     * 构建思考阶段的 Prompt
+     *
+     * @param context 上下文
+     * @return Prompt
+     */
+    private String buildThoughtPrompt(ReActContext context) {
+        StringBuilder prompt = new StringBuilder();
+
+        prompt.append("用户输入: ").append(context.getUserInput()).append("\n\n");
+
+        // 添加历史记录
+        if (!context.getThoughts().isEmpty()) {
+            prompt.append("之前的思考:\n");
+            for (int i = 0; i < context.getThoughts().size(); i++) {
+                prompt.append(i + 1).append(". ").append(context.getThoughts().get(i)).append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        if (!context.getActions().isEmpty()) {
+            prompt.append("之前的动作:\n");
+            for (int i = 0; i < context.getActions().size(); i++) {
+                Action a = context.getActions().get(i);
+                prompt.append(i + 1).append(". ").append(a.getType());
+                if (a.getToolName() != null) {
+                    prompt.append(": ").append(a.getToolName());
+                }
+                prompt.append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        if (!context.getObservations().isEmpty()) {
+            prompt.append("观察结果:\n");
+            for (int i = 0; i < context.getObservations().size(); i++) {
+                prompt.append(i + 1).append(". ").append(context.getObservations().get(i)).append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        prompt.append("请分析上述信息，给出下一步的行动。\n");
+        prompt.append("如果你认为任务已完成，请回复 FINISH 并给出最终回复。\n");
+        prompt.append("格式：\n");
+        prompt.append("- TOOL: <工具名称> - 使用工具\n");
+        prompt.append("- FINISH: <最终回复> - 完成任务\n");
+        prompt.append("- RESPOND: <回复内容> - 直接回复用户\n");
+
+        return prompt.toString();
+    }
+
+    /**
+     * 解析模型 ID
+     *
+     * @param context 上下文
+     * @return 模型 ID
+     */
+    private String resolveModelId(ReActContext context) {
+        String modelId = context.getCurrentModelId();
+
+        // 检查是否需要切换模型
+        if (context.hasModelSwitch()) {
+            modelId = context.getNextModelId();
+        }
+
+        return modelId != null ? modelId : context.getDefaultModelId();
+    }
+
+    /**
+     * 解析模型 ID（考虑动作指定的模型）
+     *
+     * @param context 上下文
+     * @param action 动作
+     * @return 模型 ID
+     */
+    private String resolveModelId(ReActContext context, Action action) {
+        if (action.getModelId() != null) {
+            return action.getModelId();
+        }
+        return resolveModelId(context);
+    }
+
+    /**
+     * 构建执行结果
+     *
+     * @param context 上下文
+     * @return 执行结果
+     */
+    private ReActResult buildResult(ReActContext context) {
+        return ReActResult.builder()
+                .executionId(context.getExecutionId())
+                .success(context.isComplete())
+                .response(context.getFinalResponse())
+                .iterations(context.getCurrentIteration())
+                .thoughts(context.getThoughts())
+                .actions(context.getActions())
+                .observations(context.getObservations())
+                .errorMessage(context.getErrorMessage())
+                .build();
     }
 }

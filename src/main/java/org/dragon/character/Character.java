@@ -61,10 +61,10 @@ public class Character {
     private ModelRegistry modelRegistry;
 
     /**
-     * 编排服务（内部流程组件）
-     * 由外部注入，用于编排决策
+     * 编排服务
+     * 由外部注入，负责决策使用哪种执行策略
      */
-    private OrchestrationService orchestrationService;
+    private org.dragon.agent.orchestration.OrchestrationService orchestrationService;
 
     /**
      * Character 全局唯一标识
@@ -190,20 +190,35 @@ public class Character {
 
     /**
      * 执行主入口
-     * 根据配置选择执行模式（REACT 或 WORKFLOW）
+     * 通过 OrchestrationService 决策执行策略，然后执行
      *
      * @param userInput 用户输入
      * @return 执行结果
      */
     public String run(String userInput) {
-        // 获取执行模式配置
-        AgentEngineConfig engineConfig = getAgentEngineConfig();
-        String executionMode = (engineConfig != null && engineConfig.getWorkflowConfig() != null) ? "WORKFLOW" : "REACT";
+        if (orchestrationService == null) {
+            throw new IllegalStateException("OrchestrationService not initialized");
+        }
 
-        if ("WORKFLOW".equals(executionMode)) {
-            WorkflowResult result = runWorkflow(engineConfig.getWorkflowConfig().getDefaultWorkflowId());
+        // 1. 调用 OrchestrationService 获取执行策略
+        OrchestrationService.OrchestrationRequest request = new OrchestrationService.OrchestrationRequest(
+                this.id, userInput, null, null);
+        OrchestrationService.OrchestrationResult orchestrationResult = orchestrationService.orchestrate(request);
+
+        if (!orchestrationResult.isSuccess()) {
+            return "Orchestration failed: " + orchestrationResult.getResponse();
+        }
+
+        // 2. 根据决策结果执行
+        OrchestrationService.Mode mode = orchestrationResult.getMode();
+
+        if (mode == OrchestrationService.Mode.WORKFLOW) {
+            // 执行 Workflow
+            String workflowId = orchestrationResult.getWorkflowId();
+            WorkflowResult result = runWorkflow(workflowId);
             return result.getErrorMessage() != null ? result.getErrorMessage() : "Workflow completed";
         } else {
+            // 执行 ReAct
             ReActResult result = runReAct(userInput);
             return result.getResponse();
         }
