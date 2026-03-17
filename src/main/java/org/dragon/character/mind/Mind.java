@@ -8,7 +8,7 @@ import org.dragon.character.mind.tag.TagRepository;
  * Mind 心智接口
  * 负责 Character 的性格特征、标签、记忆和技能的统一访问
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface Mind {

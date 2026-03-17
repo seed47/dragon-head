@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * 工作流定义
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

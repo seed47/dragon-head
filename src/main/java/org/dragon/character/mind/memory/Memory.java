@@ -12,7 +12,7 @@ import java.util.Map;
  * 记忆
  * 存储 Character 的对话、行为、观察等记忆内容
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

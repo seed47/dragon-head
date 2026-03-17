@@ -10,7 +10,7 @@ import java.util.stream.Stream;
  * LLM 调用器接口
  * 负责与各厂商 LLM 的交互
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface LLMCaller {

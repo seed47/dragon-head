@@ -7,7 +7,7 @@ import java.util.Map;
  * 工具连接器接口
  * 提供各类工具的统一访问接口
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface ToolConnector {
@@ -61,7 +61,6 @@ public interface ToolConnector {
      * 工具 Schema
      */
     @lombok.Data
-    @lombok.Builder
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
     class ToolSchema {
@@ -71,7 +70,6 @@ public interface ToolConnector {
         private Parameter outputParameter;
 
         @lombok.Data
-        @lombok.Builder
         @lombok.NoArgsConstructor
         @lombok.AllArgsConstructor
         class Parameter {

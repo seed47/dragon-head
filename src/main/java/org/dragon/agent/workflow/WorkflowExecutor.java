@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * 工作流执行器接口
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface WorkflowExecutor {

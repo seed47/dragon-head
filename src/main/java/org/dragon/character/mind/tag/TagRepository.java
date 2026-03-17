@@ -1,6 +1,5 @@
 package org.dragon.character.mind.tag;
 
-import org.dragon.character.Character;
 
 import java.util.List;
 
@@ -8,7 +7,7 @@ import java.util.List;
  * 标签仓储接口
  * 提供标签的增删改查能力
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface TagRepository {

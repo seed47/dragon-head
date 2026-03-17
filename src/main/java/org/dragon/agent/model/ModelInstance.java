@@ -11,7 +11,7 @@ import java.util.Map;
  * 模型实例
  * 代表一个可用的 LLM 模型配置
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

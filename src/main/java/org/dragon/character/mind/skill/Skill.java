@@ -12,7 +12,7 @@ import java.util.Map;
  * 技能
  * Character 拥有的技能定义
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

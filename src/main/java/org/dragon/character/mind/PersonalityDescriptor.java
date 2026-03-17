@@ -11,7 +11,7 @@ import java.util.List;
  * 性格描述对象
  * 用于定义 Character 的性格特征、价值观、行为偏好等
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

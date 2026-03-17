@@ -8,7 +8,7 @@ import java.util.stream.Stream;
  * 响应转换器接口
  * 负责将厂商返回的原始响应转换为框架内部统一的消息格式
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface ResponseTransformer {

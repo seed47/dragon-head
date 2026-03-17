@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * LLM 响应
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

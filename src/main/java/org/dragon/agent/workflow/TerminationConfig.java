@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 终止配置
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Data

@@ -1,22 +1,23 @@
 package org.dragon.agent.orchestration;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.dragon.agent.model.ModelRegistry;
 import org.dragon.agent.react.ReActContext;
 import org.dragon.agent.react.ReActExecutor;
 import org.dragon.agent.react.ReActResult;
 import org.dragon.agent.workflow.WorkflowExecutor;
+import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.character.mind.Mind;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 编排服务实现
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j
@@ -90,12 +91,12 @@ public class OrchestrationServiceImpl implements OrchestrationService {
     @Override
     public ReActResult runReAct(ReActRequest request) {
         // 获取 Character 的 Mind
-        var character = characterRegistry.get(request.getCharacterId())
-                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + request.getCharacterId()));
+        Optional<Character> characterOpt = characterRegistry.get(request.getCharacterId());
+        Character character = characterOpt.orElseThrow(() -> new IllegalArgumentException("Character not found: " + request.getCharacterId()));
 
         // 构建系统 prompt
         String systemPrompt = "";
-        if (character.getMindConfig() != null) {
+        if (character.getMindConfig() != null && character.getMindConfig().getPersonalityDescriptorPath() != null) {
             // TODO: 加载 Mind 的性格描述并转换为 prompt
         }
 

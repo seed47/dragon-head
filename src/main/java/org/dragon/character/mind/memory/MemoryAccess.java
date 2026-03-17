@@ -7,7 +7,7 @@ import java.util.List;
  * 记忆访问接口
  * 提供对 Character 私有记忆的统一访问
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface MemoryAccess {

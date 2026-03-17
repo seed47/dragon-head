@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
  * 工具注册中心
  * 负责管理所有可用工具连接器的注册和获取
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j

@@ -1,22 +1,23 @@
 package org.dragon.agent.react;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
+
 import org.dragon.agent.llm.LLMRequest;
 import org.dragon.agent.llm.LLMResponse;
 import org.dragon.agent.llm.caller.LLMCaller;
 import org.dragon.agent.model.ModelRegistry;
+import org.dragon.agent.tool.ToolConnector;
 import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.mind.memory.MemoryAccess;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * ReAct 执行器
  * 实现 ReAct 循环框架，允许 LLM 自主决定下一步行动
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j
@@ -202,27 +203,32 @@ public class ReActExecutor {
      */
     private String executeAction(Action action, String modelId) {
         switch (action.getType()) {
-            case TOOL:
-                var connector = toolRegistry.get(action.getToolName());
-                if (connector != null) {
-                    return connector.execute(action.getParameters()).getContent();
+            case TOOL -> {
+                Optional<ToolConnector> connector = toolRegistry.get(action.getToolName());
+                if (connector != null && connector.isPresent()) {
+                    return connector.get().execute(action.getParameters()).getContent();
                 }
                 return "Tool not found: " + action.getToolName();
+            }
 
-            case MEMORY:
+            case MEMORY -> {
                 return memoryAccess.semanticSearch(
                         (String) action.getParameters().get("query"),
                         (Integer) action.getParameters().getOrDefault("topK", 5)
                 ).toString();
+            }
 
-            case RESPOND:
+            case RESPOND -> {
                 return action.getToolName();
+            }
 
-            case FINISH:
+            case FINISH -> {
                 return action.getToolName();
+            }
 
-            default:
+            default -> {
                 return "Unknown action type";
+            }
         }
     }
 }

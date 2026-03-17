@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * 模型注册中心
  * 负责管理所有可用模型的注册、获取和健康检查
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j
@@ -63,7 +63,7 @@ public class ModelRegistry {
 
             // 如果删除的是默认模型，选择下一个
             if (defaultModelId != null && defaultModelId.equals(modelId)) {
-                defaultModelId = models.keys().nextElement();
+                defaultModelId = models.isEmpty() ? null : models.keySet().iterator().next();
             }
         }
     }

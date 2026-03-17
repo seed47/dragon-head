@@ -14,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Character 注册中心
  * 负责管理所有 Character 的生命周期
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j
@@ -69,7 +69,7 @@ public class CharacterRegistry {
 
             // 如果删除的是默认 Character，选择下一个
             if (defaultCharacterId != null && defaultCharacterId.equals(characterId)) {
-                defaultCharacterId = registry.keys().nextElement();
+                defaultCharacterId = registry.isEmpty() ? null : registry.keySet().iterator().next();
             }
         }
     }

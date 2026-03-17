@@ -8,7 +8,7 @@ import org.dragon.character.mind.tag.TagRepository;
 /**
  * Mind 默认实现
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 @Slf4j

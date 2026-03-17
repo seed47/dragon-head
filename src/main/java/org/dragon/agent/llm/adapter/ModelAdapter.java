@@ -9,7 +9,7 @@ import java.util.stream.Stream;
  * 模型适配器接口
  * 负责将统一请求转换为厂商特有格式，将厂商响应转换为统一格式
  *
- * @author zhz
+ * @author wyj
  * @version 1.0
  */
 public interface ModelAdapter {
