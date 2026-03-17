@@ -1,14 +1,16 @@
 package org.dragon.character;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import org.dragon.agent.model.ModelRegistry;
 import org.dragon.agent.orchestration.OrchestrationService;
-import org.dragon.agent.orchestration.OrchestrationService.OrchestrationResult;
-import org.dragon.agent.orchestration.OrchestrationService.ReActRequest;
+import org.dragon.agent.react.ReActContext;
+import org.dragon.agent.react.ReActExecutor;
 import org.dragon.agent.react.ReActResult;
+import org.dragon.agent.workflow.WorkflowExecutor;
 import org.dragon.agent.workflow.WorkflowResult;
 import org.dragon.character.task.DefaultTaskManager;
 import org.dragon.character.task.Task;
@@ -41,8 +43,26 @@ public class Character {
     private TaskManager taskManager = new DefaultTaskManager();
 
     /**
+     * ReAct 执行器
+     * 由外部注入，负责实际执行 ReAct 流程
+     */
+    private ReActExecutor reActExecutor;
+
+    /**
+     * Workflow 执行器
+     * 由外部注入，负责实际执行 Workflow
+     */
+    private WorkflowExecutor workflowExecutor;
+
+    /**
+     * 模型注册中心
+     * 由外部注入，用于获取模型信息
+     */
+    private ModelRegistry modelRegistry;
+
+    /**
      * 编排服务（内部流程组件）
-     * 由外部注入
+     * 由外部注入，用于编排决策
      */
     private OrchestrationService orchestrationService;
 
@@ -176,23 +196,17 @@ public class Character {
      * @return 执行结果
      */
     public String run(String userInput) {
-        if (orchestrationService == null) {
-            throw new IllegalStateException("OrchestrationService not initialized");
-        }
-
         // 获取执行模式配置
-        String executionMode = getAgentEngineConfig() != null &&
-                getAgentEngineConfig().getReActConfig() != null ? "REACT" : "REACT";
+        AgentEngineConfig engineConfig = getAgentEngineConfig();
+        String executionMode = (engineConfig != null && engineConfig.getWorkflowConfig() != null) ? "WORKFLOW" : "REACT";
 
-        // 构建编排请求
-        OrchestrationService.OrchestrationRequest request = OrchestrationService.OrchestrationRequest.builder()
-                .characterId(this.id)
-                .message(userInput)
-                .mode(OrchestrationService.Mode.valueOf(executionMode))
-                .build();
-
-        OrchestrationResult result = orchestrationService.orchestrate(request);
-        return result.getResponse();
+        if ("WORKFLOW".equals(executionMode)) {
+            WorkflowResult result = runWorkflow(engineConfig.getWorkflowConfig().getDefaultWorkflowId());
+            return result.getErrorMessage() != null ? result.getErrorMessage() : "Workflow completed";
+        } else {
+            ReActResult result = runReAct(userInput);
+            return result.getResponse();
+        }
     }
 
     /**
@@ -202,22 +216,41 @@ public class Character {
      * @return ReAct 执行结果
      */
     public ReActResult runReAct(String userInput) {
-        if (orchestrationService == null) {
-            throw new IllegalStateException("OrchestrationService not initialized");
+        if (reActExecutor == null) {
+            throw new IllegalStateException("ReActExecutor not initialized");
         }
 
-        ReActConfig config = getAgentEngineConfig() != null ?
-                getAgentEngineConfig().getReActConfig() : null;
+        // 获取配置
+        AgentEngineConfig engineConfig = getAgentEngineConfig();
+        ReActConfig config = engineConfig != null ? engineConfig.getReActConfig() : null;
+        String defaultModelId = engineConfig != null ? engineConfig.getDefaultModelId() : null;
+        int maxIterations = config != null ? config.getMaxIterations() : 10;
 
-        ReActRequest request = ReActRequest.builder()
+        // 如果没有指定模型，尝试从 ModelRegistry 获取默认模型
+        if (defaultModelId == null && modelRegistry != null) {
+            defaultModelId = modelRegistry.getDefault()
+                    .map(m -> m.getId())
+                    .orElse(null);
+        }
+
+        // 构建系统 prompt（从 Mind 获取）
+        String systemPrompt = "";
+        if (getMindConfig() != null && getMindConfig().getPersonalityDescriptorPath() != null) {
+            // TODO: 加载 Mind 的性格描述并转换为 prompt
+        }
+
+        // 构建 ReAct 上下文
+        ReActContext context = ReActContext.builder()
+                .executionId(UUID.randomUUID().toString())
                 .characterId(this.id)
+                .defaultModelId(defaultModelId)
+                .currentModelId(defaultModelId)
                 .userInput(userInput)
-                .defaultModelId(getAgentEngineConfig() != null ?
-                        getAgentEngineConfig().getDefaultModelId() : null)
-                .maxIterations(config != null ? config.getMaxIterations() : 10)
+                .systemPrompt(systemPrompt)
+                .maxIterations(maxIterations)
                 .build();
 
-        return orchestrationService.runReAct(request);
+        return reActExecutor.execute(context);
     }
 
     /**
@@ -227,25 +260,16 @@ public class Character {
      * @return Workflow 执行结果
      */
     public WorkflowResult runWorkflow(String workflowId) {
-        if (orchestrationService == null) {
-            throw new IllegalStateException("OrchestrationService not initialized");
+        if (workflowExecutor == null) {
+            throw new IllegalStateException("WorkflowExecutor not initialized");
         }
 
-        OrchestrationService.OrchestrationRequest request = OrchestrationService.OrchestrationRequest.builder()
-                .characterId(this.id)
-                .message("")
-                .mode(OrchestrationService.Mode.WORKFLOW)
-                .workflowId(workflowId)
-                .build();
-
-        OrchestrationResult result = orchestrationService.orchestrate(request);
-        // 将 OrchestrationResult 转换为 WorkflowResult
+        // TODO: 需要 WorkflowRegistry 来获取 Workflow 对象
+        // 暂时返回未实现的状态
         return WorkflowResult.builder()
-                .status(result.isSuccess() ? org.dragon.agent.workflow.WorkflowState.State.COMPLETED :
-                        org.dragon.agent.workflow.WorkflowState.State.FAILED)
-                .output(Collections.singletonMap("response", result.getResponse()))
-                .executionId(result.getExecutionId())
-                .durationMs(result.getDurationMs())
+                .workflowId(workflowId)
+                .status(org.dragon.agent.workflow.WorkflowState.State.FAILED)
+                .errorMessage("Workflow execution not fully implemented yet")
                 .build();
     }
 

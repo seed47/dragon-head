@@ -16,19 +16,13 @@ public interface OrchestrationService {
 
     /**
      * 执行编排
+     * 根据 Mode 决定使用哪种执行方式（WORKFLOW 或 REACT）
+     * 实际执行由 Character 完成
      *
      * @param request 编排请求
      * @return 编排结果
      */
     OrchestrationResult orchestrate(OrchestrationRequest request);
-
-    /**
-     * 执行 ReAct 模式
-     *
-     * @param request ReAct 请求
-     * @return ReAct 结果
-     */
-    org.dragon.agent.react.ReActResult runReAct(ReActRequest request);
 
     /**
      * 编排请求
