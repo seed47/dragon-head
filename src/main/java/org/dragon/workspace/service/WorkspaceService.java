@@ -288,6 +288,26 @@ public class WorkspaceService {
     }
 
     /**
+     * 执行即时任务（用于即时聊天等场景）
+     * 直接分发给 Character 执行
+     *
+     * @param characterId Character ID
+     * @param userInput 用户输入
+     * @return 执行结果
+     */
+    public String executeInstantTask(String characterId, String userInput) {
+        // 获取 Character
+        Character character = characterRegistry.get(characterId)
+                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
+
+        // 直接调用 Character 执行
+        String result = character.run(userInput);
+        log.info("[WorkspaceService] Executed instant task for character: {}", characterId);
+
+        return result;
+    }
+
+    /**
      * 分发单个任务
      *
      * @param workspaceId 工作空间 ID

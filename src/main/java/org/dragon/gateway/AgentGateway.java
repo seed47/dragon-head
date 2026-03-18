@@ -1,16 +1,13 @@
 package org.dragon.gateway;
 
 import lombok.extern.slf4j.Slf4j;
-import org.dragon.agent.model.ModelRegistry;
-import org.dragon.agent.orchestration.OrchestrationService;
-import org.dragon.agent.orchestration.OrchestrationService.OrchestrationRequest;
-import org.dragon.agent.orchestration.OrchestrationService.OrchestrationResult;
 import org.dragon.channel.ChannelManager;
 import org.dragon.channel.entity.ActionMessage;
 import org.dragon.channel.entity.ActionType;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.character.CharacterRegistry;
+import org.dragon.workspace.service.WorkspaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -19,12 +16,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Description:
- * Author: zhz
- * Version: 1.0
- * Create Date Time: 2026/3/13 23:14
- * Update Date Time:
+ * Gateway 实现
+ * 只负责渠道协议转换，将业务执行委托给 WorkspaceService
  *
+ * @author zhz
+ * @version 1.0
  */
 @Component
 @Slf4j
@@ -35,13 +31,10 @@ public class AgentGateway implements Gateway {
     private ChannelManager channelManager;
 
     @Autowired
-    private OrchestrationService orchestrationService;
-
-    @Autowired
     private CharacterRegistry characterRegistry;
 
     @Autowired
-    private ModelRegistry modelRegistry;
+    private WorkspaceService workspaceService;
 
     @Override
     public void dispatch(NormalizedMessage inboundMsg) {
@@ -53,27 +46,17 @@ public class AgentGateway implements Gateway {
                 if (characterOpt.isEmpty()) {
                     log.warn("[Gateway] No default character configured");
                     // Fallback to mock
-                    ActionMessage actionMessage = mockCallLlmBrain(inboundMsg);
+                    ActionMessage actionMessage = buildActionMessage(inboundMsg, "你刚刚给我发了 '" + inboundMsg.getTextContent() +"' 我选择不回复你");
                     channelManager.routeMessageOutbound(actionMessage);
                     return;
                 }
 
+                // 2. 通过 WorkspaceService 执行任务（统一入口）
                 String characterId = characterOpt.get().getId();
-                String modelId = modelRegistry.getDefault()
-                        .map(m -> m.getId())
-                        .orElse(null);
-
-                // 2. 通过 OrchestrationService 执行
-                OrchestrationRequest request = OrchestrationRequest.builder()
-                        .characterId(characterId)
-                        .message(inboundMsg.getTextContent())
-                        .mode(OrchestrationService.Mode.REACT)
-                        .build();
-
-                OrchestrationResult result = orchestrationService.orchestrate(request);
+                String result = workspaceService.executeInstantTask(characterId, inboundMsg.getTextContent());
 
                 // 3. 返回消息
-                ActionMessage actionMessage = buildActionMessage(inboundMsg, result.getResponse());
+                ActionMessage actionMessage = buildActionMessage(inboundMsg, result);
                 channelManager.routeMessageOutbound(actionMessage);
 
             } catch (Exception e) {
@@ -84,6 +67,13 @@ public class AgentGateway implements Gateway {
         });
     }
 
+    /**
+     * 构建回复消息
+     *
+     * @param inboundMsg 收到的消息
+     * @param content 回复内容
+     * @return 回复消息
+     */
     private ActionMessage buildActionMessage(NormalizedMessage inboundMsg, String content) {
         ActionMessage actionMessage = new ActionMessage();
         actionMessage.setChannelName("Feishu");
@@ -98,18 +88,4 @@ public class AgentGateway implements Gateway {
 
         return actionMessage;
     }
-
-    private ActionMessage mockCallLlmBrain(NormalizedMessage inboundMsg) {
-        ActionMessage actionMessage = new ActionMessage();
-        actionMessage.setChannelName("Feishu");
-        actionMessage.setActionType(ActionType.REPLY);
-        actionMessage.setQuoteMessageId(inboundMsg.getMessageId());
-        actionMessage.setMessageType("text");
-        actionMessage.setContent("你刚刚给我发了 '" + inboundMsg.getTextContent() +"' 我选择不回复你");
-        MentionConfig mentionConfig = new MentionConfig();
-        mentionConfig.setMentionOpenId(inboundMsg.getSenderId());
-        actionMessage.setMentionConfig(mentionConfig);
-        return actionMessage;
-    }
-
 }

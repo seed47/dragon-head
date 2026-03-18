@@ -52,11 +52,10 @@ public class OrchestrationServiceImpl implements OrchestrationService {
 
             log.info("[Orchestration] Decision: mode={}, workflowId={}", mode, workflowId);
 
-            // 返回编排结果，包含执行策略信息
+            // 返回编排结果，包含执行策略信息（不包含执行结果，执行结果由 Character.run() 返回）
             return new OrchestrationResult.Builder()
                     .executionId(executionId)
                     .success(true)
-                    .response("Orchestration decision made")
                     .durationMs(System.currentTimeMillis() - startTime)
                     .mode(mode)
                     .workflowId(workflowId)
@@ -67,7 +66,6 @@ public class OrchestrationServiceImpl implements OrchestrationService {
             return new OrchestrationResult.Builder()
                     .executionId(executionId)
                     .success(false)
-                    .response(e.getMessage())
                     .durationMs(System.currentTimeMillis() - startTime)
                     .build();
         }
