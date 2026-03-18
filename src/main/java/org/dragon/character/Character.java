@@ -214,7 +214,7 @@ public class Character {
         OrchestrationService.OrchestrationResult orchestrationResult = orchestrationService.orchestrate(request);
 
         if (!orchestrationResult.isSuccess()) {
-            return "Orchestration failed: " + orchestrationResult.getResponse();
+            return "Orchestration failed";
         }
 
         // 2. 根据决策结果执行

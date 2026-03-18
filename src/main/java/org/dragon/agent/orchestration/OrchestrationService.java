@@ -125,10 +125,11 @@ public interface OrchestrationService {
 
     /**
      * 编排结果
+     * 只包含策略信息，不包含执行结果
+     * 执行结果由 Character.run() / ReActExecutor 返回
      */
     public class OrchestrationResult {
         private boolean success;
-        private String response;
         private String executionId;
         private long durationMs;
         private Mode mode;
@@ -137,9 +138,8 @@ public interface OrchestrationService {
         public OrchestrationResult() {
         }
 
-        public OrchestrationResult(boolean success, String response, String executionId, long durationMs, Mode mode, String workflowId) {
+        public OrchestrationResult(boolean success, String executionId, long durationMs, Mode mode, String workflowId) {
             this.success = success;
-            this.response = response;
             this.executionId = executionId;
             this.durationMs = durationMs;
             this.mode = mode;
@@ -152,14 +152,6 @@ public interface OrchestrationService {
 
         public void setSuccess(boolean success) {
             this.success = success;
-        }
-
-        public String getResponse() {
-            return response;
-        }
-
-        public void setResponse(String response) {
-            this.response = response;
         }
 
         public String getExecutionId() {
@@ -200,7 +192,6 @@ public interface OrchestrationService {
 
         public static class Builder {
             private boolean success;
-            private String response;
             private String executionId;
             private long durationMs;
             private Mode mode;
@@ -208,11 +199,6 @@ public interface OrchestrationService {
 
             public Builder success(boolean success) {
                 this.success = success;
-                return this;
-            }
-
-            public Builder response(String response) {
-                this.response = response;
                 return this;
             }
 
@@ -237,7 +223,7 @@ public interface OrchestrationService {
             }
 
             public OrchestrationResult build() {
-                return new OrchestrationResult(success, response, executionId, durationMs, mode, workflowId);
+                return new OrchestrationResult(success, executionId, durationMs, mode, workflowId);
             }
         }
     }
