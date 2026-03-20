@@ -26,10 +26,18 @@
         <tag/>
         <url/>
     </scm>
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
     <properties>
         <java.version>21</java.version>
         <spring-ai.version>2.0.0-M2</spring-ai.version>
         <jackson.version>2.17.3</jackson.version>
+        <lombok.version>1.18.40</lombok.version>
+        <oapi-sdk.version>2.4.24</oapi-sdk.version>
     </properties>
     <dependencies>
         <dependency>
@@ -68,7 +76,7 @@
         <dependency>
             <groupId>com.larksuite.oapi</groupId>
             <artifactId>oapi-sdk</artifactId>
-            <version>${oapi-sdk.version}</version>
+            <version>2.4.24</version>
         </dependency>
         <dependency>
             <groupId>javax.annotation</groupId>

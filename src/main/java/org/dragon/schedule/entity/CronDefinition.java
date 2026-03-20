@@ -22,10 +22,16 @@ public class CronDefinition {
 
     // ==================== 基本信息 ====================
     private String name;
+    private String description;
+    private String createdBy;
 
     // ==================== 调度配置 ====================
     private CronType cronType;
     private String cronExpression;
+    private String timezone;
+    private Long startTime;
+    private Long endTime;
+    private Integer maxConcurrent;
 
     // ==================== 任务配置 ====================
     private JobType jobType;
@@ -35,6 +41,8 @@ public class CronDefinition {
     // ==================== 执行策略 ====================
     private MisfirePolicy misfirePolicy;
     private Integer timeoutMs;
+    private Integer retryCount;
+    private Integer retryIntervalMs;
 
     // ==================== 状态管理 ====================
     private CronStatus status;
