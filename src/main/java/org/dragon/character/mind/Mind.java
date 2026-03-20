@@ -2,7 +2,11 @@ package org.dragon.character.mind;
 
 import org.dragon.character.mind.memory.MemoryAccess;
 import org.dragon.character.mind.skill.SkillAccess;
+import org.dragon.character.mind.tag.Tag;
 import org.dragon.character.mind.tag.TagRepository;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Mind 心智接口
@@ -61,4 +65,22 @@ public interface Mind {
      * @return SkillAccess
      */
     SkillAccess getSkillAccess();
+
+    /**
+     * 通过 LLM 分析suggestion并增强 personality
+     * Observer使用此方法将LLM生成的优化建议应用到Character的心智模型
+     *
+     * @param suggestions 优化建议列表
+     * @return 更新后的 PersonalityDescriptor
+     */
+    PersonalityDescriptor enhanceByLLM(List<String> suggestions);
+
+    /**
+     * 通过 LLM 分析suggestion并更新 tags
+     * 用于更新对其他Character的印象、信任度等
+     *
+     * @param suggestions 优化建议列表
+     * @return targetCharacterId -> Tag 的映射，表示需要更新的tag
+     */
+    Map<String, Tag> enhanceTagsByLLM(List<String> suggestions);
 }

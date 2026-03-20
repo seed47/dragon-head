@@ -10,12 +10,14 @@ import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
 import org.dragon.character.mind.Mind;
 import org.dragon.character.mind.PersonalityDescriptor;
+import org.dragon.character.mind.tag.Tag;
 import org.dragon.observer.commons.CommonSenseValidator;
 import org.dragon.observer.evaluation.EvaluationRecord;
 import org.dragon.observer.evaluation.EvaluationRecordStore;
 import org.dragon.observer.log.ModificationLog;
 import org.dragon.observer.log.ModificationLogStore;
 import org.dragon.organization.Organization;
+import org.dragon.organization.OrganizationEnhancer;
 import org.dragon.organization.OrganizationRegistry;
 import org.dragon.organization.personality.OrganizationPersonality;
 import org.slf4j.Logger;
@@ -43,6 +45,8 @@ public class OptimizationExecutor {
     private final EvaluationRecordStore evaluationRecordStore;
     private final CharacterRegistry characterRegistry;
     private final OrganizationRegistry organizationRegistry;
+    private final LLMSuggestionGenerator suggestionGenerator;
+    private final OrganizationEnhancer organizationEnhancer;
 
     /**
      * 执行优化动作
@@ -265,6 +269,143 @@ public class OptimizationExecutor {
                 applyOrganizationModification(action);
                 break;
         }
+    }
+
+    /**
+     * 使用 LLM 生成的建议执行优化
+     * 这是 Observer 优化功能的核心方法，通过 LLM 分析任务执行数据，
+     * 生成优化建议，然后应用到 Character 或 Organization
+     *
+     * @param action 优化动作
+     * @return 执行后的动作
+     */
+    public OptimizationAction executeWithLLM(OptimizationAction action) {
+        if (!action.canExecute()) {
+            log.warn("[OptimizationExecutor] Action cannot execute: {}", action.getId());
+            action.markRejected("Action is not in PENDING state");
+            optimizationActionStore.save(action);
+            return action;
+        }
+
+        try {
+            // 1. 通过 LLM 生成优化建议
+            // TODO: 需要从 action 或 context 中获取 workspace 和 organizationId
+            String workspace = (String) action.getParameters().get("workspace");
+            String organizationId = (String) action.getParameters().get("organizationId");
+
+            List<String> suggestions = suggestionGenerator.generateSuggestions(
+                    workspace,
+                    organizationId,
+                    action.getTargetType(),
+                    action.getTargetId(),
+                    10); // 考虑最近10个任务
+
+            if (suggestions.isEmpty()) {
+                log.info("[OptimizationExecutor] No suggestions generated, skipping optimization");
+                action.markExecuted("No suggestions generated");
+                optimizationActionStore.save(action);
+                return action;
+            }
+
+            // 2. 保存修改前的快照
+            String beforeSnapshot = captureSnapshot(action.getTargetType(), action.getTargetId());
+
+            // 3. 根据目标类型应用 LLM 增强
+            switch (action.getTargetType()) {
+                case CHARACTER:
+                    applyCharacterModificationWithLLM(action.getTargetId(), suggestions);
+                    break;
+                case ORGANIZATION:
+                    applyOrganizationModificationWithLLM(action.getTargetId(), suggestions);
+                    break;
+            }
+
+            // 4. 保存修改后的快照
+            String afterSnapshot = captureSnapshot(action.getTargetType(), action.getTargetId());
+
+            // 5. 记录修改日志
+            ModificationLog modLog = ModificationLog.builder()
+                    .id(UUID.randomUUID().toString())
+                    .targetType(ModificationLog.TargetType.valueOf(action.getTargetType().name()))
+                    .targetId(action.getTargetId())
+                    .beforeSnapshot(beforeSnapshot)
+                    .afterSnapshot(afterSnapshot)
+                    .triggerSource(ModificationLog.TriggerSource.OBSERVER)
+                    .evaluationId(action.getEvaluationId())
+                    .reason("LLM-driven optimization with suggestions: " + suggestions)
+                    .operator("OBSERVER_LLM")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            modificationLogStore.save(modLog);
+
+            // 6. 标记为已执行
+            action.markExecuted("LLM-driven optimization executed with " + suggestions.size() + " suggestions");
+            action.getParameters().put("suggestions", suggestions);
+            optimizationActionStore.save(action);
+
+            log.info("[OptimizationExecutor] LLM-driven optimization executed successfully: {} suggestions", suggestions.size());
+
+        } catch (Exception e) {
+            log.error("[OptimizationExecutor] LLM-driven optimization failed: {}", action.getId(), e);
+            action.setStatus(OptimizationAction.Status.FAILED);
+            action.setResult("LLM optimization failed: " + e.getMessage());
+            optimizationActionStore.save(action);
+        }
+
+        return action;
+    }
+
+    /**
+     * 使用 LLM 建议修改 Character
+     */
+    private void applyCharacterModificationWithLLM(String characterId, List<String> suggestions) {
+        Character character = characterRegistry.get(characterId)
+                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
+
+        Mind mind = character.getMind();
+        if (mind == null) {
+            throw new IllegalStateException("Character mind is not initialized");
+        }
+
+        // 1. 通过 LLM 增强 personality
+        PersonalityDescriptor updatedDescriptor = mind.enhanceByLLM(suggestions);
+        if (updatedDescriptor != null) {
+            mind.updatePersonality(updatedDescriptor);
+            log.info("[OptimizationExecutor] Updated Character personality via LLM: {}", characterId);
+        }
+
+        // 2. 通过 LLM 增强 tags
+        Map<String, Tag> tagUpdates = mind.enhanceTagsByLLM(suggestions);
+        if (tagUpdates != null && !tagUpdates.isEmpty()) {
+            // 应用 tag 更新
+            for (Map.Entry<String, Tag> entry : tagUpdates.entrySet()) {
+                String targetCharacterId = entry.getKey();
+                Tag tag = entry.getValue();
+                if (mind.getTagRepository() != null) {
+                    mind.getTagRepository().addTag(targetCharacterId, tag);
+                }
+            }
+            log.info("[OptimizationExecutor] Updated {} tags via LLM for Character: {}", tagUpdates.size(), characterId);
+        }
+
+        characterRegistry.update(character);
+    }
+
+    /**
+     * 使用 LLM 建议修改 Organization
+     */
+    private void applyOrganizationModificationWithLLM(String orgId, List<String> suggestions) {
+        Organization organization = organizationRegistry.get(orgId)
+                .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + orgId));
+
+        // 通过 OrganizationEnhancer 增强 personality
+        OrganizationPersonality updatedPersonality = organizationEnhancer.enhanceByLLM(organization, suggestions);
+        if (updatedPersonality != null) {
+            organization.setPersonality(updatedPersonality);
+            log.info("[OptimizationExecutor] Updated Organization personality via LLM: {}", orgId);
+        }
+
+        organizationRegistry.update(organization);
     }
 
     /**

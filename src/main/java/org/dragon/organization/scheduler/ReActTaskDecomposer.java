@@ -10,6 +10,8 @@ import org.dragon.agent.model.ModelRegistry;
 import org.dragon.agent.react.ReActContext;
 import org.dragon.agent.react.ReActExecutor;
 import org.dragon.agent.react.ReActResult;
+import org.dragon.config.PromptKeys;
+import org.dragon.config.PromptManager;
 import org.dragon.organization.Organization;
 import org.dragon.organization.member.OrganizationMember;
 import org.dragon.organization.task.OrgTaskStatus;
@@ -36,10 +38,11 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ReActTaskDecomposer implements TaskDecomposer {
 
-    private static final String SYSTEM_PROMPT = "你是一个组织调度专家，负责把复杂任务拆解为可执行的子任务。";
+    private static final String DEFAULT_SYSTEM_PROMPT = "你是一个组织调度专家，负责把复杂任务拆解为可执行的子任务。";
 
     private final ReActExecutor reActExecutor;
     private final ModelRegistry modelRegistry;
+    private final PromptManager promptManager;
 
     @Override
     public List<SubTask> decomposeWithReAct(OrganizationTask task,
@@ -55,13 +58,22 @@ public class ReActTaskDecomposer implements TaskDecomposer {
         }
 
         try {
+            // 获取 system prompt，支持 workspace-organization 层级查找
+            // workspace 可以从 organization 获取，这里简化处理先使用 null
+            String workspace = null;
+            String organizationId = task.getOrganizationId();
+            String systemPrompt = promptManager.getPrompt(workspace, organizationId, null, PromptKeys.REACT_TASK_DECOMPOSE);
+            if (systemPrompt == null) {
+                systemPrompt = DEFAULT_SYSTEM_PROMPT;
+            }
+
             ReActContext context = ReActContext.builder()
                     .executionId(UUID.randomUUID().toString())
                     .characterId("org-scheduler-" + task.getOrganizationId())
                     .defaultModelId(resolveDefaultModelId().orElse(null))
                     .currentModelId(resolveDefaultModelId().orElse(null))
                     .userInput(buildDecomposePrompt(task, organization, availableMembers))
-                    .systemPrompt(SYSTEM_PROMPT)
+                    .systemPrompt(systemPrompt)
                     .maxIterations(1)
                     .build();
 

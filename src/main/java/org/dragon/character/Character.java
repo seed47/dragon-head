@@ -13,6 +13,8 @@ import org.dragon.agent.react.ReActResult;
 import org.dragon.agent.workflow.WorkflowExecutor;
 import org.dragon.agent.workflow.WorkflowResult;
 import org.dragon.character.mind.Mind;
+import org.dragon.config.PromptKeys;
+import org.dragon.config.PromptManager;
 import org.dragon.character.mind.DefaultMind;
 import org.dragon.character.task.DefaultTaskManager;
 import org.dragon.character.task.Task;
@@ -51,6 +53,12 @@ public class Character {
     private ReActExecutor reActExecutor;
 
     /**
+     * Prompt 管理器
+     * 由外部注入，用于获取层级化的 prompt
+     */
+    private PromptManager promptManager;
+
+    /**
      * Workflow 执行器
      * 由外部注入，负责实际执行 Workflow
      */
@@ -72,6 +80,18 @@ public class Character {
      * Character 全局唯一标识
      */
     private String id;
+
+    /**
+     * 所属 Workspace ID
+     * 同一个 Character 可以在多个 Workspace 中工作
+     */
+    private List<String> workspaceIds;
+
+    /**
+     * 所属 Organization ID
+     * 同一个 Character 可以在多个 Organization 中工作
+     */
+    private List<String> organizationIds;
 
     /**
      * Character 名称
@@ -256,11 +276,22 @@ public class Character {
                     .orElse(null);
         }
 
-        // 构建系统 prompt（从 Mind 获取）
+        // 构建系统 prompt（优先从 PromptManager 获取，支持 workspace-organization-character 层级）
         String systemPrompt = "";
-        Mind currentMind = getMind(); // 确保 Mind 已初始化
-        if (currentMind != null && currentMind.getPersonality() != null) {
-            systemPrompt = currentMind.getPersonality().toPrompt();
+        if (promptManager != null) {
+            // 获取 Character 所在的第一个 Workspace 和 Organization
+            String workspace = workspaceIds != null && !workspaceIds.isEmpty()
+                    ? workspaceIds.get(0) : null;
+            String organizationId = organizationIds != null && !organizationIds.isEmpty()
+                    ? organizationIds.get(0) : null;
+            systemPrompt = promptManager.getPrompt(workspace, organizationId, id, PromptKeys.CHARACTER_SYSTEM);
+        }
+        // 如果 PromptManager 没有获取到，则从 Mind 获取
+        if (systemPrompt == null || systemPrompt.isEmpty()) {
+            Mind currentMind = getMind(); // 确保 Mind 已初始化
+            if (currentMind != null && currentMind.getPersonality() != null) {
+                systemPrompt = currentMind.getPersonality().toPrompt();
+            }
         }
 
         // 构建 ReAct 上下文
