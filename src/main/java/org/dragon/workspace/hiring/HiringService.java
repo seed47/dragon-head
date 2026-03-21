@@ -56,17 +56,16 @@ public class HiringService {
         hiringRequestStore.save(request);
         log.info("[HiringService] Submitted hiring request: {} to workspace: {}", request.getId(), workspaceId);
 
-        // 处理雇佣流程
-        processHiringRequest(request);
-
         return request;
     }
 
     /**
      * 处理雇佣请求
      * 只负责将候选人加入 Workspace，不负责任务分发
+     *
+     * @param request 雇佣请求
      */
-    private void processHiringRequest(HiringRequest request) {
+    public void processHiringRequest(HiringRequest request) {
         // 更新状态为处理中
         request.setStatus(HiringRequestStatus.PROCESSING);
         request.setUpdatedAt(LocalDateTime.now());

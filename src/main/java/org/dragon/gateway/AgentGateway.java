@@ -1,19 +1,20 @@
 package org.dragon.gateway;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import org.dragon.channel.ChannelManager;
 import org.dragon.channel.entity.ActionMessage;
 import org.dragon.channel.entity.ActionType;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.workspace.service.WorkspaceService;
+import org.dragon.workspace.WorkspaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Gateway 实现

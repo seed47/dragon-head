@@ -1,4 +1,4 @@
-package org.dragon.workspace.service;
+package org.dragon.workspace;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -7,19 +7,17 @@ import java.util.UUID;
 
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.workspace.Workspace;
-import org.dragon.workspace.WorkspaceRegistry;
-import org.dragon.workspace.scheduler.WorkspaceScheduler;
 import org.dragon.workspace.context.ExecutionContext;
 import org.dragon.workspace.hiring.Candidate;
+import org.dragon.workspace.hiring.HiringRecord;
 import org.dragon.workspace.hiring.HiringRequest;
 import org.dragon.workspace.hiring.HiringService;
-import org.dragon.workspace.hiring.HiringRecord;
 import org.dragon.workspace.hiring.LLMHiringEngine;
 import org.dragon.workspace.material.Material;
 import org.dragon.workspace.material.MaterialService;
 import org.dragon.workspace.member.WorkspaceMember;
 import org.dragon.workspace.member.WorkspaceMemberManagementService;
+import org.dragon.workspace.scheduler.WorkspaceScheduler;
 import org.dragon.workspace.task.WorkspaceTask;
 import org.dragon.workspace.task.WorkspaceTaskService;
 import org.dragon.workspace.task.WorkspaceTaskStatus;
