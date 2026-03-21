@@ -2,12 +2,15 @@ package org.dragon.workspace.service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.dragon.agent.llm.util.CharacterCaller;
 import org.dragon.character.Character;
 import org.dragon.config.PromptKeys;
 import org.dragon.config.PromptManager;
+import org.dragon.task.Task;
+import org.dragon.task.TaskStore;
+import org.dragon.task.TaskStatus;
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.dragon.workspace.built_ins.character.member_selector.MemberSelectorCharacterFactory;
@@ -15,9 +18,6 @@ import org.dragon.workspace.built_ins.character.project_manager.ProjectManagerCh
 import org.dragon.workspace.chat.ChatRoom;
 import org.dragon.workspace.chat.ChatSession;
 import org.dragon.workspace.member.WorkspaceMember;
-import org.dragon.workspace.task.SubTask;
-import org.dragon.workspace.task.WorkspaceTask;
-import org.dragon.workspace.task.WorkspaceTaskStatus;
 import org.springframework.stereotype.Service;
 
 import lombok.Getter;
@@ -44,10 +44,7 @@ public class WorkspaceTaskArrangementService {
     private final PromptManager promptManager;
     private final MemberSelectorCharacterFactory memberSelectorCharacterFactory;
     private final ProjectManagerCharacterFactory projectManagerCharacterFactory;
-
-    // 任务存储
-    private final Map<String, WorkspaceTask> tasks = new ConcurrentHashMap<>();
-    private final Map<String, SubTask> subTasks = new ConcurrentHashMap<>();
+    private final TaskStore taskStore;
 
     /**
      * 任务执行模式枚举
@@ -80,7 +77,7 @@ public class WorkspaceTaskArrangementService {
      * @param specifiedCharacterIds 指定的 Character ID 列表（当 executionMode 为 SPECIFIED 时使用）
      * @return 工作空间任务
      */
-    public WorkspaceTask submitTask(String workspaceId, String taskName,
+    public Task submitTask(String workspaceId, String taskName,
             String taskDescription, Object input, String creatorId,
             TaskExecutionMode executionMode, List<String> specifiedCharacterIds) {
         // 验证工作空间存在
@@ -88,19 +85,20 @@ public class WorkspaceTaskArrangementService {
                 .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
 
         // 创建任务
-        WorkspaceTask task = WorkspaceTask.builder()
+        Task task = Task.builder()
                 .id(UUID.randomUUID().toString())
                 .workspaceId(workspaceId)
                 .name(taskName)
                 .description(taskDescription)
                 .input(input)
                 .creatorId(creatorId)
-                .status(WorkspaceTaskStatus.PENDING)
+                .status(TaskStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        tasks.put(task.getId(), task);
+        // 持久化任务
+        taskStore.save(task);
         log.info("[WorkspaceTaskArrangementService] Submitted task {} to workspace {}", task.getId(), workspaceId);
 
         // 自动开始处理任务
@@ -119,7 +117,7 @@ public class WorkspaceTaskArrangementService {
      * @param creatorId 创建者 ID
      * @return 工作空间任务
      */
-    public WorkspaceTask submitTask(String workspaceId, String taskName,
+    public Task submitTask(String workspaceId, String taskName,
             String taskDescription, Object input, String creatorId) {
         return submitTask(workspaceId, taskName, taskDescription, input, creatorId,
                 TaskExecutionMode.AUTO, null);
@@ -128,13 +126,14 @@ public class WorkspaceTaskArrangementService {
     /**
      * 处理任务
      */
-    private void processTask(WorkspaceTask task, Workspace workspace,
+    private void processTask(Task task, Workspace workspace,
             TaskExecutionMode executionMode, List<String> specifiedCharacterIds) {
         // 获取工作空间成员
         List<WorkspaceMember> members = memberService.listMembers(task.getWorkspaceId());
         if (members.isEmpty()) {
             log.warn("[WorkspaceTaskArrangementService] No members available in workspace {}", task.getWorkspaceId());
-            task.setStatus(WorkspaceTaskStatus.FAILED);
+            task.setStatus(TaskStatus.FAILED);
+            taskStore.update(task);
             return;
         }
 
@@ -159,26 +158,29 @@ public class WorkspaceTaskArrangementService {
 
         if (selectedCharacters == null || selectedCharacters.isEmpty()) {
             log.warn("[WorkspaceTaskArrangementService] No characters selected for task {}", task.getId());
-            task.setStatus(WorkspaceTaskStatus.FAILED);
+            task.setStatus(TaskStatus.FAILED);
+            taskStore.update(task);
             return;
         }
 
         // 1. 任务分解 - 通过 ProjectManager Character
-        List<SubTask> decomposedSubTasks = decomposeTaskWithCharacter(task, workspace, members);
+        List<Task> childTasks = decomposeTaskWithCharacter(task, workspace, members);
 
-        if (decomposedSubTasks == null || decomposedSubTasks.isEmpty()) {
+        if (childTasks == null || childTasks.isEmpty()) {
             log.warn("[WorkspaceTaskArrangementService] Task decomposition failed for task {}", task.getId());
-            task.setStatus(WorkspaceTaskStatus.FAILED);
+            task.setStatus(TaskStatus.FAILED);
+            taskStore.update(task);
             return;
         }
 
-        // 保存子任务到本地存储
-        for (SubTask st : decomposedSubTasks) {
-            st.setWorkspaceTaskId(task.getId());
-            this.subTasks.put(st.getId(), st);
+        // 保存子任务到 Store
+        for (Task childTask : childTasks) {
+            childTask.setParentTaskId(task.getId());
+            taskStore.save(childTask);
         }
-        task.setSubTaskIds(decomposedSubTasks.stream().map(SubTask::getId).toList());
-        task.setStatus(WorkspaceTaskStatus.RUNNING);
+        task.setChildTaskIds(childTasks.stream().map(Task::getId).toList());
+        task.setStatus(TaskStatus.RUNNING);
+        taskStore.update(task);
 
         // 2. 创建协作会话
         List<String> participantIds = selectedCharacters.stream()
@@ -187,18 +189,19 @@ public class WorkspaceTaskArrangementService {
         ChatSession session = chatRoom.createSession(
                 task.getWorkspaceId(), participantIds, task.getId());
         task.setCollaborationSessionId(session.getId());
+        taskStore.update(task);
 
         // 3. 分配任务
-        assignSubTasks(decomposedSubTasks, selectedCharacters, task);
+        assignChildTasks(childTasks, selectedCharacters, task);
 
         // 4. 执行任务
-        executeSubTasks(decomposedSubTasks, task);
+        executeChildTasks(childTasks, task);
     }
 
     /**
      * 通过 MemberSelector Character 选择成员
      */
-    private List<Character> selectMembersWithCharacter(WorkspaceTask task, Workspace workspace,
+    private List<Character> selectMembersWithCharacter(Task task, Workspace workspace,
             List<WorkspaceMember> members) {
         try {
             // 获取或创建 MemberSelector Character
@@ -227,7 +230,7 @@ public class WorkspaceTaskArrangementService {
     /**
      * 通过 ProjectManager Character 分解任务
      */
-    private List<SubTask> decomposeTaskWithCharacter(WorkspaceTask task, Workspace workspace,
+    private List<Task> decomposeTaskWithCharacter(Task task, Workspace workspace,
             List<WorkspaceMember> members) {
         try {
             // 获取或创建 ProjectManager Character
@@ -247,7 +250,7 @@ public class WorkspaceTaskArrangementService {
         } catch (Exception e) {
             log.error("[WorkspaceTaskArrangementService] Task decomposition failed: {}", e.getMessage());
             // 降级：创建单个简单子任务
-            return createFallbackSubTasks(task);
+            return createFallbackChildTasks(task);
         }
     }
 
@@ -287,7 +290,7 @@ public class WorkspaceTaskArrangementService {
     /**
      * 构建成员选择 prompt
      */
-    private String buildMemberSelectionPrompt(WorkspaceTask task, List<WorkspaceMember> members,
+    private String buildMemberSelectionPrompt(Task task, List<WorkspaceMember> members,
             String systemPrompt) {
         StringBuilder sb = new StringBuilder();
         sb.append(systemPrompt).append("\n\n");
@@ -308,7 +311,7 @@ public class WorkspaceTaskArrangementService {
     /**
      * 构建任务分解 prompt
      */
-    private String buildTaskDecomposePrompt(WorkspaceTask task, List<WorkspaceMember> members,
+    private String buildTaskDecomposePrompt(Task task, List<WorkspaceMember> members,
             String systemPrompt) {
         StringBuilder sb = new StringBuilder();
         sb.append(systemPrompt).append("\n\n");
@@ -358,7 +361,7 @@ public class WorkspaceTaskArrangementService {
     /**
      * 解析分解后的子任务（简化版本，实际需要 JSON 解析）
      */
-    private List<SubTask> parseDecomposedTasks(String result, String taskId) {
+    private List<Task> parseDecomposedTasks(String result, String taskId) {
         // 简化实现：解析 JSON 格式结果
         // 实际实现需要更健壮的 JSON 解析
         try {
@@ -368,103 +371,103 @@ public class WorkspaceTaskArrangementService {
         }
 
         // 降级：创建单个简单子任务
-        return createFallbackSubTasks(WorkspaceTask.builder().id(taskId).build());
+        return createFallbackChildTasks(Task.builder().id(taskId).build());
     }
 
     /**
      * 创建降级子任务列表
      */
-    private List<SubTask> createFallbackSubTasks(WorkspaceTask task) {
-        SubTask subTask = SubTask.builder()
+    private List<Task> createFallbackChildTasks(Task task) {
+        Task childTask = Task.builder()
                 .id(UUID.randomUUID().toString())
-                .workspaceTaskId(task.getId())
+                .parentTaskId(task.getId())
+                .workspaceId(task.getWorkspaceId())
                 .description(task.getDescription() != null ? task.getDescription() : task.getName())
-                .status(WorkspaceTaskStatus.PENDING)
-                .order(0)
+                .status(TaskStatus.PENDING)
                 .build();
-        return List.of(subTask);
+        return List.of(childTask);
     }
 
     /**
      * 分配子任务
      */
-    private void assignSubTasks(List<SubTask> subTasks, List<Character> selectedCharacters,
-            WorkspaceTask task) {
-        task.setAssignedMemberIds(selectedCharacters.stream()
+    private void assignChildTasks(List<Task> childTasks, List<Character> selectedCharacters,
+            Task parentTask) {
+        parentTask.setAssignedMemberIds(selectedCharacters.stream()
                 .map(Character::getId)
                 .toList());
-        task.setStatus(WorkspaceTaskStatus.RUNNING);
+        parentTask.setStatus(TaskStatus.RUNNING);
+        taskStore.update(parentTask);
 
-        for (int i = 0; i < subTasks.size(); i++) {
-            SubTask subTask = subTasks.get(i);
+        for (int i = 0; i < childTasks.size(); i++) {
+            Task childTask = childTasks.get(i);
             if (i < selectedCharacters.size()) {
                 Character character = selectedCharacters.get(i);
-                subTask.setCharacterId(character.getId());
-                subTask.setRole("executor");
+                childTask.setCharacterId(character.getId());
             }
-            subTask.setStatus(WorkspaceTaskStatus.RUNNING);
-            subTask.setOrder(i);
-            this.subTasks.put(subTask.getId(), subTask);
+            childTask.setStatus(TaskStatus.RUNNING);
+            taskStore.update(childTask);
         }
     }
 
     /**
      * 执行子任务
      */
-    private void executeSubTasks(List<SubTask> subTasks, WorkspaceTask task) {
-        for (SubTask subTask : subTasks) {
+    private void executeChildTasks(List<Task> childTasks, Task parentTask) {
+        for (Task childTask : childTasks) {
             try {
-                subTask.setStatus(WorkspaceTaskStatus.RUNNING);
-                subTask.setStartedAt(LocalDateTime.now());
+                childTask.setStatus(TaskStatus.RUNNING);
+                childTask.setStartedAt(LocalDateTime.now());
+                taskStore.update(childTask);
 
                 // TODO: 通过 TaskBridge 提交给 Character 执行
                 // 这里模拟执行
-                log.info("[WorkspaceTaskArrangementService] Executing subTask {} on character {}",
-                        subTask.getId(), subTask.getCharacterId());
+                log.info("[WorkspaceTaskArrangementService] Executing childTask {} on character {}",
+                        childTask.getId(), childTask.getCharacterId());
 
                 // 模拟执行完成
-                subTask.setStatus(WorkspaceTaskStatus.COMPLETED);
-                subTask.setCompletedAt(LocalDateTime.now());
-                subTask.setExecutionResult(SubTask.ExecutionResult.builder()
-                        .success(true)
-                        .result("Task completed")
-                        .build());
+                childTask.setStatus(TaskStatus.COMPLETED);
+                childTask.setCompletedAt(LocalDateTime.now());
+                childTask.setResult("Task completed");
+                taskStore.update(childTask);
 
             } catch (Exception e) {
-                subTask.setStatus(WorkspaceTaskStatus.FAILED);
-                subTask.setExecutionResult(SubTask.ExecutionResult.builder()
-                        .success(false)
-                        .error(e.getMessage())
-                        .build());
+                childTask.setStatus(TaskStatus.FAILED);
+                childTask.setErrorMessage(e.getMessage());
+                taskStore.update(childTask);
 
-                log.error("[WorkspaceTaskArrangementService] SubTask {} failed: {}", subTask.getId(), e.getMessage());
+                log.error("[WorkspaceTaskArrangementService] ChildTask {} failed: {}", childTask.getId(), e.getMessage());
             }
         }
 
         // 检查所有子任务是否完成
-        checkAndCompleteTask(task);
+        checkAndCompleteTask(parentTask);
     }
 
     /**
      * 检查并完成任务
      */
-    private void checkAndCompleteTask(WorkspaceTask task) {
-        List<SubTask> taskSubTasks = task.getSubTaskIds().stream()
-                .map(subTasks::get)
-                .toList();
+    private void checkAndCompleteTask(Task parentTask) {
+        List<Task> childTasks = parentTask.getChildTaskIds().stream()
+                .map(taskStore::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
 
-        boolean allCompleted = taskSubTasks.stream()
-                .allMatch(st -> st.getStatus() == WorkspaceTaskStatus.COMPLETED);
-        boolean anyFailed = taskSubTasks.stream()
-                .anyMatch(st -> st.getStatus() == WorkspaceTaskStatus.FAILED);
+        boolean allCompleted = childTasks.stream()
+                .allMatch(st -> st.getStatus() == TaskStatus.COMPLETED);
+        boolean anyFailed = childTasks.stream()
+                .anyMatch(st -> st.getStatus() == TaskStatus.FAILED);
 
         if (allCompleted) {
-            task.setStatus(WorkspaceTaskStatus.COMPLETED);
-            task.setOutput("All sub-tasks completed successfully");
-            log.info("[WorkspaceTaskArrangementService] Task {} completed", task.getId());
+            parentTask.setStatus(TaskStatus.COMPLETED);
+            parentTask.setOutput("All child tasks completed successfully");
+            taskStore.update(parentTask);
+            log.info("[WorkspaceTaskArrangementService] Task {} completed", parentTask.getId());
         } else if (anyFailed) {
-            task.setStatus(WorkspaceTaskStatus.FAILED);
-            log.warn("[WorkspaceTaskArrangementService] Task {} failed", task.getId());
+            parentTask.setStatus(TaskStatus.FAILED);
+            taskStore.update(parentTask);
+            log.warn("[WorkspaceTaskArrangementService] Task {} failed", parentTask.getId());
         }
     }
 
@@ -483,19 +486,19 @@ public class WorkspaceTaskArrangementService {
      * ExecutionFeedback 执行反馈
      */
     public static class ExecutionFeedback {
-        private String subTaskId;
+        private String childTaskId;
         private boolean success;
         private String errorMessage;
         private long durationMs;
 
-        public ExecutionFeedback(String subTaskId, boolean success, String errorMessage, long durationMs) {
-            this.subTaskId = subTaskId;
+        public ExecutionFeedback(String childTaskId, boolean success, String errorMessage, long durationMs) {
+            this.childTaskId = childTaskId;
             this.success = success;
             this.errorMessage = errorMessage;
             this.durationMs = durationMs;
         }
 
-        public String getSubTaskId() { return subTaskId; }
+        public String getChildTaskId() { return childTaskId; }
         public boolean isSuccess() { return success; }
         public String getErrorMessage() { return errorMessage; }
         public long getDurationMs() { return durationMs; }

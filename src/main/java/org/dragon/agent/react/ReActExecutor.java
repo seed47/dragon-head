@@ -2,6 +2,7 @@ package org.dragon.agent.react;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.dragon.agent.llm.LLMRequest;
 import org.dragon.agent.llm.LLMResponse;
@@ -9,6 +10,7 @@ import org.dragon.agent.llm.caller.LLMCaller;
 import org.dragon.agent.tool.ToolConnector;
 import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.mind.memory.MemoryAccess;
+import org.dragon.task.Task;
 import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
@@ -113,11 +115,49 @@ public class ReActExecutor {
                 .systemPrompt(context.getSystemPrompt())
                 .build();
 
+        // 根据是否启用流式调用选择不同的方法
+        if (context.isStreamingEnabled()) {
+            return streamThink(context, request);
+        } else {
+            return syncThink(context, request);
+        }
+    }
+
+    /**
+     * 同步思考
+     */
+    private String syncThink(ReActContext context, LLMRequest request) {
         LLMResponse response = llmCaller.call(request);
         String thought = response.getContent();
-
         context.addThought(thought);
         log.debug("[ReAct] Thought: {}", thought);
+        return thought;
+    }
+
+    /**
+     * 流式思考
+     */
+    private String streamThink(ReActContext context, LLMRequest request) {
+        Stream<LLMResponse> stream = llmCaller.streamCall(request);
+        StringBuilder fullContent = new StringBuilder();
+
+        stream.forEach(response -> {
+            String chunk = response.getContent();
+            if (chunk != null) {
+                fullContent.append(chunk);
+
+                // 写入 Task
+                Task task = context.getTask();
+                if (task != null) {
+                    String current = task.getCurrentStreamingContent();
+                    task.setCurrentStreamingContent((current != null ? current : "") + chunk);
+                }
+            }
+        });
+
+        String thought = fullContent.toString();
+        context.addThought(thought);
+        log.debug("[ReAct] Streamed Thought: {}", thought);
 
         return thought;
     }

@@ -1,6 +1,7 @@
 package org.dragon.workspace;
 
 import org.dragon.character.CharacterRegistry;
+import org.dragon.task.TaskStore;
 import org.dragon.workspace.service.WorkspaceActionLogService;
 import org.dragon.workspace.service.WorkspaceHiringService;
 import org.dragon.workspace.service.WorkspaceLifecycleService;
@@ -8,7 +9,6 @@ import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
 import org.dragon.workspace.service.WorkspaceTaskArrangementService;
 import org.dragon.workspace.service.WorkspaceTaskService;
-import org.dragon.workspace.task.WorkspaceTaskStore;
 
 /**
  * WorkspaceApplicationBuilder Workspace 应用构建器
@@ -31,7 +31,7 @@ public class WorkspaceApplicationBuilder {
     WorkspaceTaskService workspaceTaskService;
     CharacterRegistry characterRegistry;
     WorkspaceTaskArrangementService workspaceTaskArrangementService;
-    WorkspaceTaskStore workspaceTaskStore;
+    TaskStore taskStore;
 
     /**
      * 设置 Workspace ID
@@ -135,11 +135,11 @@ public class WorkspaceApplicationBuilder {
     /**
      * 设置 Workspace 任务存储
      *
-     * @param workspaceTaskStore WorkspaceTaskStore
+     * @param taskStore TaskStore
      * @return self
      */
-    public WorkspaceApplicationBuilder workspaceTaskStore(WorkspaceTaskStore workspaceTaskStore) {
-        this.workspaceTaskStore = workspaceTaskStore;
+    public WorkspaceApplicationBuilder taskStore(TaskStore taskStore) {
+        this.taskStore = taskStore;
         return this;
     }
 

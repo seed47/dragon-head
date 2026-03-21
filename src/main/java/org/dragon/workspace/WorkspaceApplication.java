@@ -16,11 +16,10 @@ import org.dragon.workspace.service.WorkspaceHiringService;
 import org.dragon.workspace.service.WorkspaceLifecycleService;
 import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
+import org.dragon.task.Task;
+import org.dragon.task.TaskStore;
 import org.dragon.workspace.service.WorkspaceTaskArrangementService;
 import org.dragon.workspace.service.WorkspaceTaskService;
-import org.dragon.workspace.task.WorkspaceTask;
-import org.dragon.workspace.task.WorkspaceTaskStore;
-import org.dragon.workspace.task.WorkspaceTaskStatus;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +45,7 @@ public class WorkspaceApplication {
     private final WorkspaceTaskService workspaceTaskService;
     private final CharacterRegistry characterRegistry;
     private final WorkspaceTaskArrangementService workspaceTaskArrangementService;
-    private final WorkspaceTaskStore workspaceTaskStore;
+    private final TaskStore taskStore;
 
     /**
      * 私有构造函数，通过 Builder 构建
@@ -61,7 +60,7 @@ public class WorkspaceApplication {
         this.workspaceTaskService = builder.workspaceTaskService;
         this.characterRegistry = builder.characterRegistry;
         this.workspaceTaskArrangementService = builder.workspaceTaskArrangementService;
-        this.workspaceTaskStore = builder.workspaceTaskStore;
+        this.taskStore = builder.taskStore;
     }
 
     // ==================== Workspace 生命周期管理委托 ====================
@@ -150,7 +149,7 @@ public class WorkspaceApplication {
 
     // ==================== 任务管理委托 ====================
 
-    public Optional<WorkspaceTask> getTask(String workspaceId, String taskId) {
+    public Optional<Task> getTask(String workspaceId, String taskId) {
         return workspaceTaskService.getTask(workspaceId, taskId);
     }
 
@@ -158,34 +157,31 @@ public class WorkspaceApplication {
         return workspaceTaskService.getTaskResult(workspaceId, taskId);
     }
 
-    public WorkspaceTask cancelTask(String workspaceId, String taskId) {
+    public Task cancelTask(String workspaceId, String taskId) {
         return workspaceTaskService.cancelTask(workspaceId, taskId);
     }
 
-    public List<WorkspaceTask> listTasks(String workspaceId) {
+    public List<Task> listTasks(String workspaceId) {
         return workspaceTaskService.listTasks(workspaceId);
     }
 
     // ==================== 任务分发执行 ====================
 
     /**
-     * 执行即时任务（用于即时聊天等场景）
-     * 直接分发给 Character 执行
+     * 执行任务（通过 WorkspaceTaskArrangementService 进行智能编排）
+     * 1. 通过 MemberSelector 选择合适的 Character
+     * 2. 通过 ProjectManager 拆分任务为子任务
+     * 3. 分派子任务给合适的 Character 执行
      *
-     * @param characterId Character ID
-     * @param userInput 用户输入
-     * @return 执行结果
+     * @param taskName 任务名称
+     * @param taskDescription 任务描述
+     * @param input 任务输入
+     * @param creatorId 创建者 ID
+     * @return 工作空间任务
      */
-    public String executeInstantTask(String characterId, String userInput) {
-        // 获取 Character
-        Character character = characterRegistry.get(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
-
-        // 直接调用 Character 执行
-        String result = character.run(userInput);
-        log.info("[WorkspaceApplication] Executed instant task for character: {}", characterId);
-
-        return result;
+    public Task executeTask(String taskName, String taskDescription, Object input, String creatorId) {
+        return workspaceTaskArrangementService.submitTask(
+                workspaceId, taskName, taskDescription, input, creatorId);
     }
 
     // ==================== 物料管理委托 ====================
@@ -209,40 +205,5 @@ public class WorkspaceApplication {
 
     public List<Material> listMaterials(String workspaceId) {
         return materialService.listByWorkspace(workspaceId);
-    }
-
-    // ==================== 任务分发 ====================
-
-    /**
-     * 分发给 Character 执行任务
-     */
-    private void dispatchToCharacter(WorkspaceTask task) {
-        String characterId = task.getExecutorId();
-
-        // 更新任务状态为 RUNNING
-        task.setStatus(WorkspaceTaskStatus.RUNNING);
-        task.setStartedAt(java.time.LocalDateTime.now());
-        workspaceTaskStore.update(task);
-
-        // 获取 Character 并执行任务
-        Character character = characterRegistry.get(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
-
-        // 执行任务（异步）
-        try {
-            String taskInput = task.getInput() != null ? task.getInput().toString() : "";
-            org.dragon.character.task.Task characterTask = character.addTaskAndRun(taskInput);
-            // 保存 Character 任务 ID
-            task.setInternalTaskId(characterTask.getId());
-            task.setStatus(WorkspaceTaskStatus.RUNNING);
-            workspaceTaskStore.update(task);
-            log.info("[WorkspaceApplication] Task dispatched to character: {} -> taskId: {}", characterId, characterTask.getId());
-        } catch (Exception e) {
-            log.error("[WorkspaceApplication] Task failed: {}", task.getId(), e);
-            task.setErrorMessage(e.getMessage());
-            task.setStatus(WorkspaceTaskStatus.FAILED);
-            task.setCompletedAt(java.time.LocalDateTime.now());
-            workspaceTaskStore.update(task);
-        }
     }
 }

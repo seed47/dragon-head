@@ -303,6 +303,65 @@ public class Character {
                 .userInput(userInput)
                 .systemPrompt(systemPrompt)
                 .maxIterations(maxIterations)
+                .streamingEnabled(false)
+                .build();
+
+        return reActExecutor.execute(context);
+    }
+
+    /**
+     * 执行 ReAct（带流式和 Task 支持）
+     *
+     * @param userInput 用户输入
+     * @param streaming 是否启用流式调用
+     * @param task 关联的 Task
+     * @return ReAct 执行结果
+     */
+    public ReActResult runReAct(String userInput, boolean streaming, org.dragon.task.Task task) {
+        if (reActExecutor == null) {
+            throw new IllegalStateException("ReActExecutor not initialized");
+        }
+
+        // 获取配置
+        AgentEngineConfig engineConfig = getAgentEngineConfig();
+        ReActConfig config = engineConfig != null ? engineConfig.getReActConfig() : null;
+        String defaultModelId = engineConfig != null ? engineConfig.getDefaultModelId() : null;
+        int maxIterations = config != null ? config.getMaxIterations() : 10;
+
+        // 如果没有指定模型，尝试从 ModelRegistry 获取默认模型
+        if (defaultModelId == null && modelRegistry != null) {
+            defaultModelId = modelRegistry.getDefault()
+                    .map(m -> m.getId())
+                    .orElse(null);
+        }
+
+        // 构建系统 prompt
+        String systemPrompt = "";
+        if (promptManager != null) {
+            String workspace = workspaceIds != null && !workspaceIds.isEmpty()
+                    ? workspaceIds.get(0) : null;
+            String organizationId = organizationIds != null && !organizationIds.isEmpty()
+                    ? organizationIds.get(0) : null;
+            systemPrompt = promptManager.getPrompt(workspace, organizationId, id, PromptKeys.CHARACTER_SYSTEM);
+        }
+        if (systemPrompt == null || systemPrompt.isEmpty()) {
+            Mind currentMind = getMind();
+            if (currentMind != null && currentMind.getPersonality() != null) {
+                systemPrompt = currentMind.getPersonality().toPrompt();
+            }
+        }
+
+        // 构建 ReAct 上下文
+        ReActContext context = ReActContext.builder()
+                .executionId(UUID.randomUUID().toString())
+                .characterId(this.id)
+                .defaultModelId(defaultModelId)
+                .currentModelId(defaultModelId)
+                .userInput(userInput)
+                .systemPrompt(systemPrompt)
+                .maxIterations(maxIterations)
+                .streamingEnabled(streaming)
+                .task(task)
                 .build();
 
         return reActExecutor.execute(context);

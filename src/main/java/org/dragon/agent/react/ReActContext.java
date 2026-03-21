@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.dragon.task.Task;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -95,6 +96,17 @@ public class ReActContext {
      * 当前迭代次数
      */
     private int currentIteration;
+
+    /**
+     * 是否启用流式调用
+     */
+    @Builder.Default
+    private boolean streamingEnabled = false;
+
+    /**
+     * 关联的 Task（用于流式输出）
+     */
+    private Task task;
 
     /**
      * 是否完成
