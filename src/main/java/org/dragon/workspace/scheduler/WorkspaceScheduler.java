@@ -9,7 +9,7 @@ import org.dragon.workspace.WorkspaceRegistry;
 import org.dragon.workspace.chat.ChatRoom;
 import org.dragon.workspace.chat.ChatSession;
 import org.dragon.workspace.member.WorkspaceMember;
-import org.dragon.workspace.member.WorkspaceMemberManagementService;
+import org.dragon.workspace.service.WorkspaceMemberManagementService;
 import org.dragon.workspace.task.SubTask;
 import org.dragon.workspace.task.WorkspaceTask;
 import org.dragon.workspace.task.WorkspaceTaskStatus;

@@ -1,10 +1,13 @@
-package org.dragon.workspace.task;
+package org.dragon.workspace.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import org.dragon.workspace.WorkspaceRegistry;
+import org.dragon.workspace.task.WorkspaceTask;
+import org.dragon.workspace.task.WorkspaceTaskStatus;
+import org.dragon.workspace.task.WorkspaceTaskStore;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;

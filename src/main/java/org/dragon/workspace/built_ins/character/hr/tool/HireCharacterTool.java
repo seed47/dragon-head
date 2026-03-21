@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.dragon.agent.tool.ToolConnector;
-import org.dragon.workspace.WorkspaceService;
 import org.dragon.workspace.hiring.HireMode;
+import org.dragon.workspace.service.WorkspaceHiringService;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HireCharacterTool implements ToolConnector {
 
-    private final WorkspaceService workspaceService;
+    private final WorkspaceHiringService workspaceHiringService;
 
     @Override
     public String getName() {
@@ -42,7 +42,7 @@ public class HireCharacterTool implements ToolConnector {
             }
 
             // 执行雇佣（使用 MANUAL 模式，因为是 HR 执行）
-            workspaceService.hire(workspaceId, characterId, HireMode.MANUAL);
+            workspaceHiringService.hire(workspaceId, characterId, HireMode.MANUAL);
 
             return ToolResult.builder()
                     .success(true)

@@ -1,4 +1,4 @@
-package org.dragon.workspace.material;
+package org.dragon.workspace.service;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -6,13 +6,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.dragon.workspace.WorkspaceRegistry;
+import org.dragon.workspace.material.Material;
+import org.dragon.workspace.material.MaterialStore;
+import org.dragon.workspace.material.MaterialStorage;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * MaterialService 物料管理服务
+ * WorkspaceMaterialService 物料管理服务
  *
  * @author wyj
  * @version 1.0
@@ -20,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MaterialService {
+public class WorkspaceMaterialService {
 
     private final MaterialStore materialStore;
     private final MaterialStorage materialStorage;
@@ -38,7 +41,7 @@ public class MaterialService {
      * @return 物料
      */
     public Material upload(String workspaceId, InputStream inputStream, String filename,
-                           long size, String contentType, String uploader) {
+                          long size, String contentType, String uploader) {
         // 验证工作空间存在
         workspaceRegistry.get(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
@@ -59,7 +62,7 @@ public class MaterialService {
                 .build();
 
         materialStore.save(material);
-        log.info("[MaterialService] Uploaded material: {} to workspace: {}", material.getId(), workspaceId);
+        log.info("[WorkspaceMaterialService] Uploaded material: {} to workspace: {}", material.getId(), workspaceId);
 
         return material;
     }
@@ -106,7 +109,7 @@ public class MaterialService {
 
         // 删除元数据
         materialStore.delete(materialId);
-        log.info("[MaterialService] Deleted material: {}", materialId);
+        log.info("[WorkspaceMaterialService] Deleted material: {}", materialId);
     }
 
     /**

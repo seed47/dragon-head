@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.dragon.agent.tool.ToolConnector;
-import org.dragon.workspace.WorkspaceService;
+import org.dragon.workspace.service.WorkspaceHiringService;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AssignDutyTool implements ToolConnector {
 
-    private final WorkspaceService workspaceService;
+    private final WorkspaceHiringService workspaceHiringService;
 
     @Override
     public String getName() {
@@ -42,7 +42,7 @@ public class AssignDutyTool implements ToolConnector {
             }
 
             // 设置职责描述
-            workspaceService.setCharacterDuty(workspaceId, characterId, dutyDescription);
+            workspaceHiringService.setCharacterDuty(workspaceId, characterId, dutyDescription);
 
             return ToolResult.builder()
                     .success(true)

@@ -9,7 +9,7 @@ import org.dragon.channel.entity.ActionType;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.workspace.WorkspaceService;
+import org.dragon.workspace.WorkspaceApplicationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -35,7 +35,7 @@ public class AgentGateway implements Gateway {
     private CharacterRegistry characterRegistry;
 
     @Autowired
-    private WorkspaceService workspaceService;
+    private WorkspaceApplicationProvider workspaceApplicationProvider;
 
     @Override
     public void dispatch(NormalizedMessage inboundMsg) {
@@ -52,9 +52,9 @@ public class AgentGateway implements Gateway {
                     return;
                 }
 
-                // 2. 通过 WorkspaceService 执行任务（统一入口）
+                // 2. 通过 WorkspaceApplicationProvider 执行任务（统一入口）
                 String characterId = characterOpt.get().getId();
-                String result = workspaceService.executeInstantTask(characterId, inboundMsg.getTextContent());
+                String result = workspaceApplicationProvider.executeInstantTask(characterId, inboundMsg.getTextContent());
 
                 // 3. 返回消息
                 ActionMessage actionMessage = buildActionMessage(inboundMsg, result);

@@ -1,4 +1,4 @@
-package org.dragon.workspace.member;
+package org.dragon.workspace.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
+import org.dragon.workspace.member.WorkspaceMember;
+import org.dragon.workspace.member.WorkspaceMemberStore;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
