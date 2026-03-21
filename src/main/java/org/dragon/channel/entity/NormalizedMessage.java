@@ -27,7 +27,7 @@ public class NormalizedMessage {
     private String messageId;   // 原始消息 ID (用于引用回复)
     // ================= 2. 基础载荷 (Payload) =================
     private String textContent;             // 清洗后的纯文本/语音转录文本
-    private List<Attachment> attachments;   // 附件列表 (图片、文件等)
+    private List<NormalizedFile> normalizedFiles;   // 附件列表 (图片、文件等)
     // ================= 3. 元数据信封 (Metadata) =================
     private Map<String, Object> metadata;   // 包含时间戳、原始环境信息等
 }

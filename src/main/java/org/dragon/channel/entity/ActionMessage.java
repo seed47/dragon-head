@@ -1,6 +1,7 @@
 package org.dragon.channel.entity;
 
 import lombok.Data;
+import org.dragon.channel.enums.ActionType;
 
 /**
  * Description:

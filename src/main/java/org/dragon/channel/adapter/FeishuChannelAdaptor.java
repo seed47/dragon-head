@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.dragon.channel.entity.ActionMessage;
-import org.dragon.channel.entity.ActionType;
+import org.dragon.channel.enums.ActionType;
 import org.dragon.channel.entity.NormalizedMessage;
 import org.dragon.channel.parser.FeishuParser;
 import org.dragon.gateway.Gateway;

@@ -5,9 +5,9 @@ import java.util.concurrent.CompletableFuture;
 
 import org.dragon.channel.ChannelManager;
 import org.dragon.channel.entity.ActionMessage;
-import org.dragon.channel.entity.ActionType;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
+import org.dragon.channel.enums.ActionType;
 import org.dragon.character.CharacterRegistry;
 import org.dragon.workspace.WorkspaceApplicationProvider;
 import org.springframework.beans.factory.annotation.Autowired;

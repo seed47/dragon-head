@@ -3,11 +3,15 @@ package org.dragon.channel.parser;
 import com.google.gson.JsonParser;
 import com.lark.oapi.service.im.v1.model.*;
 import org.apache.commons.lang3.StringUtils;
+import org.dragon.channel.FileManager;
 import org.dragon.channel.entity.ActionMessage;
-import org.dragon.channel.entity.Attachment;
+import org.dragon.channel.entity.NormalizedFile;
 import org.dragon.channel.entity.MentionConfig;
 import org.dragon.channel.entity.NormalizedMessage;
+import org.dragon.channel.enums.FileSource;
+import org.dragon.channel.file.FeishuImStorageAdapter;
 import org.dragon.util.GsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +29,9 @@ public class FeishuParser {
 
     @Value("${channel.feishu.robotOpenId}")
     private String robotOpenId;
+
+    @Autowired
+    private FeishuImStorageAdapter feishuImStorageAdapter;
 
     public NormalizedMessage parseInbound(P2MessageReceiveV1 p2MessageReceiveV1, String channelName) {
         EventMessage message = p2MessageReceiveV1.getEvent().getMessage();
@@ -75,10 +82,19 @@ public class FeishuParser {
                 normalizedMessageImg.setChatType(chatType);
                 normalizedMessageImg.setMessageId(message.getMessageId());
                 normalizedMessageImg.setTextContent("[图片]");
-                Attachment attachmentImg = new Attachment();
-                attachmentImg.setFileUrl(null);
-                attachmentImg.setMimeType("image");
-                attachmentImg.setFileName(JsonParser.parseString(message.getContent()).getAsJsonObject().get("image_key").getAsString());
+                NormalizedFile normalizedFileImg = new NormalizedFile();
+                normalizedFileImg.setFileSource(FileSource.FEISHU_IM);
+                normalizedFileImg.setFileUri(null);
+                normalizedFileImg.setFileKey(JsonParser.parseString(message.getContent()).getAsJsonObject().get("image_key").getAsString());
+                normalizedFileImg.setFileName(null);
+                normalizedFileImg.setMimeType("image");
+                normalizedFileImg.setFileSize(null);
+                normalizedFileImg.setMessageId(message.getMessageId());
+                try {
+                    feishuImStorageAdapter.download(normalizedFileImg);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 return normalizedMessageImg;
             }
             case "audio" -> {
@@ -90,10 +106,19 @@ public class FeishuParser {
                 normalizedMessageAudio.setChatType(chatType);
                 normalizedMessageAudio.setMessageId(message.getMessageId());
                 normalizedMessageAudio.setTextContent("[语音]");
-                Attachment attachmentAudio = new Attachment();
-                attachmentAudio.setFileUrl(null);
-                attachmentAudio.setMimeType("audio");
-                attachmentAudio.setFileName(JsonParser.parseString(message.getContent()).getAsJsonObject().get("file_key").getAsString());
+                NormalizedFile normalizedFileImg = new NormalizedFile();
+                normalizedFileImg.setFileSource(FileSource.FEISHU_IM);
+                normalizedFileImg.setFileUri(null);
+                normalizedFileImg.setFileKey(JsonParser.parseString(message.getContent()).getAsJsonObject().get("image_key").getAsString());
+                normalizedFileImg.setFileName(null);
+                normalizedFileImg.setMimeType("audio");
+                normalizedFileImg.setFileSize(JsonParser.parseString(message.getContent()).getAsJsonObject().get("duration").getAsLong());
+                normalizedFileImg.setMessageId(message.getMessageId());
+                try {
+                    feishuImStorageAdapter.download(normalizedFileImg);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 return normalizedMessageAudio;
             }
             case "file" -> {
@@ -105,10 +130,19 @@ public class FeishuParser {
                 normalizedMessageFile.setChatType(chatType);
                 normalizedMessageFile.setMessageId(message.getMessageId());
                 normalizedMessageFile.setTextContent("[文件]");
-                Attachment attachmentFile = new Attachment();
-                attachmentFile.setFileUrl(null);
-                attachmentFile.setMimeType("file");
-                attachmentFile.setFileName(JsonParser.parseString(message.getContent()).getAsJsonObject().get("file_key").getAsString());
+                NormalizedFile normalizedFileImg = new NormalizedFile();
+                normalizedFileImg.setFileSource(FileSource.FEISHU_IM);
+                normalizedFileImg.setFileUri(null);
+                normalizedFileImg.setFileKey(JsonParser.parseString(message.getContent()).getAsJsonObject().get("image_key").getAsString());
+                normalizedFileImg.setFileName(JsonParser.parseString(message.getContent()).getAsJsonObject().get("file_name").getAsString());
+                normalizedFileImg.setMimeType("file");
+                normalizedFileImg.setFileSize(null);
+                normalizedFileImg.setMessageId(message.getMessageId());
+                try {
+                    feishuImStorageAdapter.download(normalizedFileImg);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 return normalizedMessageFile;
             }
             default -> {
