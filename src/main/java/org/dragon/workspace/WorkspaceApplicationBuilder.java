@@ -1,12 +1,12 @@
 package org.dragon.workspace;
 
 import org.dragon.character.CharacterRegistry;
-import org.dragon.workspace.scheduler.WorkspaceScheduler;
 import org.dragon.workspace.service.WorkspaceActionLogService;
 import org.dragon.workspace.service.WorkspaceHiringService;
 import org.dragon.workspace.service.WorkspaceLifecycleService;
 import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
+import org.dragon.workspace.service.WorkspaceTaskArrangementService;
 import org.dragon.workspace.service.WorkspaceTaskService;
 import org.dragon.workspace.task.WorkspaceTaskStore;
 
@@ -30,7 +30,7 @@ public class WorkspaceApplicationBuilder {
     WorkspaceMaterialService materialService;
     WorkspaceTaskService workspaceTaskService;
     CharacterRegistry characterRegistry;
-    WorkspaceScheduler workspaceScheduler;
+    WorkspaceTaskArrangementService workspaceTaskArrangementService;
     WorkspaceTaskStore workspaceTaskStore;
 
     /**
@@ -122,13 +122,13 @@ public class WorkspaceApplicationBuilder {
     }
 
     /**
-     * 设置 Workspace 调度器
+     * 设置 Workspace 任务编排服务
      *
-     * @param workspaceScheduler WorkspaceScheduler
+     * @param workspaceTaskArrangementService WorkspaceTaskArrangementService
      * @return self
      */
-    public WorkspaceApplicationBuilder workspaceScheduler(WorkspaceScheduler workspaceScheduler) {
-        this.workspaceScheduler = workspaceScheduler;
+    public WorkspaceApplicationBuilder workspaceTaskArrangementService(WorkspaceTaskArrangementService workspaceTaskArrangementService) {
+        this.workspaceTaskArrangementService = workspaceTaskArrangementService;
         return this;
     }
 

@@ -11,12 +11,12 @@ import org.dragon.workspace.hiring.HireMode;
 import org.dragon.workspace.material.Material;
 import org.dragon.workspace.member.CharacterDuty;
 import org.dragon.workspace.member.WorkspaceMember;
-import org.dragon.workspace.scheduler.WorkspaceScheduler;
 import org.dragon.workspace.service.WorkspaceActionLogService;
 import org.dragon.workspace.service.WorkspaceHiringService;
 import org.dragon.workspace.service.WorkspaceLifecycleService;
 import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
+import org.dragon.workspace.service.WorkspaceTaskArrangementService;
 import org.dragon.workspace.service.WorkspaceTaskService;
 import org.dragon.workspace.task.WorkspaceTask;
 import org.dragon.workspace.task.WorkspaceTaskStore;
@@ -45,7 +45,7 @@ public class WorkspaceApplication {
     private final WorkspaceMaterialService materialService;
     private final WorkspaceTaskService workspaceTaskService;
     private final CharacterRegistry characterRegistry;
-    private final WorkspaceScheduler workspaceScheduler;
+    private final WorkspaceTaskArrangementService workspaceTaskArrangementService;
     private final WorkspaceTaskStore workspaceTaskStore;
 
     /**
@@ -60,7 +60,7 @@ public class WorkspaceApplication {
         this.materialService = builder.materialService;
         this.workspaceTaskService = builder.workspaceTaskService;
         this.characterRegistry = builder.characterRegistry;
-        this.workspaceScheduler = builder.workspaceScheduler;
+        this.workspaceTaskArrangementService = builder.workspaceTaskArrangementService;
         this.workspaceTaskStore = builder.workspaceTaskStore;
     }
 

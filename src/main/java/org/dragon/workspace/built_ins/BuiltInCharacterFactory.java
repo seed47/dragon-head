@@ -5,7 +5,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.dragon.character.Character;
+import org.dragon.character.CharacterFactory;
 import org.dragon.workspace.built_ins.character.hr.HrCharacterFactory;
+import org.dragon.workspace.built_ins.character.member_selector.MemberSelectorCharacterFactory;
+import org.dragon.workspace.built_ins.character.project_manager.ProjectManagerCharacterFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,16 +23,32 @@ import org.springframework.stereotype.Component;
 public class BuiltInCharacterFactory {
 
     private final HrCharacterFactory hrCharacterFactory;
+    private final MemberSelectorCharacterFactory memberSelectorCharacterFactory;
+    private final ProjectManagerCharacterFactory projectManagerCharacterFactory;
 
     /**
      * 内置 Character 工厂映射 (type -> factory)
      */
-    private final Map<String, HrCharacterFactory> factoryMap = new ConcurrentHashMap<>();
+    private final Map<String, CharacterFactory<Character>> factoryMap = new ConcurrentHashMap<>();
 
-    public BuiltInCharacterFactory(HrCharacterFactory hrCharacterFactory) {
+    public BuiltInCharacterFactory(HrCharacterFactory hrCharacterFactory,
+            MemberSelectorCharacterFactory memberSelectorCharacterFactory,
+            ProjectManagerCharacterFactory projectManagerCharacterFactory) {
         this.hrCharacterFactory = hrCharacterFactory;
-        // 注册内置 Character 工厂
+        this.memberSelectorCharacterFactory = memberSelectorCharacterFactory;
+        this.projectManagerCharacterFactory = projectManagerCharacterFactory;
+
+        // 初始化注册
+        initFactories();
+    }
+
+    /**
+     * 初始化注册内置 Character 工厂
+     */
+    private void initFactories() {
         registerFactory(hrCharacterFactory.getCharacterType(), hrCharacterFactory);
+        registerFactory(memberSelectorCharacterFactory.getCharacterType(), memberSelectorCharacterFactory);
+        registerFactory(projectManagerCharacterFactory.getCharacterType(), projectManagerCharacterFactory);
     }
 
     /**
@@ -37,7 +57,7 @@ public class BuiltInCharacterFactory {
      * @param type Character 类型
      * @param factory 工厂实例
      */
-    public void registerFactory(String type, HrCharacterFactory factory) {
+    public void registerFactory(String type, CharacterFactory<Character> factory) {
         factoryMap.put(type, factory);
     }
 
@@ -47,7 +67,7 @@ public class BuiltInCharacterFactory {
      * @param type Character 类型
      * @return 工厂实例
      */
-    public Optional<HrCharacterFactory> getFactory(String type) {
+    public Optional<CharacterFactory<Character>> getFactory(String type) {
         return Optional.ofNullable(factoryMap.get(type));
     }
 
@@ -58,6 +78,24 @@ public class BuiltInCharacterFactory {
      */
     public HrCharacterFactory getHrCharacterFactory() {
         return hrCharacterFactory;
+    }
+
+    /**
+     * 获取 MemberSelector Character 工厂
+     *
+     * @return MemberSelector Character 工厂
+     */
+    public MemberSelectorCharacterFactory getMemberSelectorCharacterFactory() {
+        return memberSelectorCharacterFactory;
+    }
+
+    /**
+     * 获取 ProjectManager Character 工厂
+     *
+     * @return ProjectManager Character 工厂
+     */
+    public ProjectManagerCharacterFactory getProjectManagerCharacterFactory() {
+        return projectManagerCharacterFactory;
     }
 
     /**

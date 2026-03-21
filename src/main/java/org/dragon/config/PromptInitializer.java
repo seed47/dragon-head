@@ -43,6 +43,12 @@ public class PromptInitializer implements CommandLineRunner {
         // 初始化 HR 相关 prompts
         initHrPrompts();
 
+        // 初始化 MemberSelector 相关 prompts
+        initMemberSelectorPrompts();
+
+        // 初始化 ProjectManager 相关 prompts
+        initProjectManagerPrompts();
+
         log.info("[PromptInitializer] Prompt initialization completed");
     }
 
@@ -134,6 +140,28 @@ public class PromptInitializer implements CommandLineRunner {
         // 通用选择 Prompt
         promptManager.setGlobalPrompt(PromptKeys.SELECTION_GENERIC,
                 "请从以下候选中选择一个最合适的：");
+    }
+
+    private void initMemberSelectorPrompts() {
+        // MemberSelector 选择成员 Prompt
+        String memberSelectorSelect = loadPromptFromFile("prompts/member-selector-select-prompt.txt");
+        if (memberSelectorSelect != null) {
+            promptManager.setGlobalPrompt(PromptKeys.MEMBER_SELECTOR_SELECT, memberSelectorSelect);
+        } else {
+            promptManager.setGlobalPrompt(PromptKeys.MEMBER_SELECTOR_SELECT,
+                    "请从以下候选成员中选择最合适的执行者来完成指定任务。考虑技能匹配度、历史成功率和工作负载。");
+        }
+    }
+
+    private void initProjectManagerPrompts() {
+        // ProjectManager 任务拆解 Prompt
+        String projectManagerDecompose = loadPromptFromFile("prompts/project-manager-decompose-prompt.txt");
+        if (projectManagerDecompose != null) {
+            promptManager.setGlobalPrompt(PromptKeys.PROJECT_MANAGER_DECOMPOSE, projectManagerDecompose);
+        } else {
+            promptManager.setGlobalPrompt(PromptKeys.PROJECT_MANAGER_DECOMPOSE,
+                    "请将以下任务拆解为可执行的子任务。");
+        }
     }
 
     /**

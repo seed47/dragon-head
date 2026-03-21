@@ -86,6 +86,20 @@ public class PromptKeys {
      */
     public static final String SELECTION_GENERIC = "selection.generic";
 
+    // ==================== MemberSelector 模块 ====================
+
+    /**
+     * MemberSelector 选择成员 prompt
+     */
+    public static final String MEMBER_SELECTOR_SELECT = "memberSelector.select";
+
+    // ==================== ProjectManager 模块 ====================
+
+    /**
+     * ProjectManager 任务拆解 prompt
+     */
+    public static final String PROJECT_MANAGER_DECOMPOSE = "projectManager.decompose";
+
     // ==================== 便捷方法 ====================
 
     /**
@@ -128,5 +142,19 @@ public class PromptKeys {
      */
     public static boolean isSelectionPrompt(String key) {
         return key != null && key.startsWith("selection.");
+    }
+
+    /**
+     * 判断是否为 MemberSelector 相关的 prompt
+     */
+    public static boolean isMemberSelectorPrompt(String key) {
+        return key != null && key.startsWith("memberSelector.");
+    }
+
+    /**
+     * 判断是否为 ProjectManager 相关的 prompt
+     */
+    public static boolean isProjectManagerPrompt(String key) {
+        return key != null && key.startsWith("projectManager.");
     }
 }
