@@ -61,24 +61,29 @@ public interface ToolConnector {
      * 工具 Schema
      */
     @lombok.Data
+    @lombok.Builder
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
     class ToolSchema {
         private String name;
         private String description;
-        private List<Parameter> inputParameters;
-        private Parameter outputParameter;
+        private List<ToolParameter> inputParameters;
+        private ToolParameter outputParameter;
+    }
 
-        @lombok.Data
-        @lombok.NoArgsConstructor
-        @lombok.AllArgsConstructor
-        class Parameter {
-            private String name;
-            private String type;
-            private String description;
-            private boolean required;
-            private Object defaultValue;
-        }
+    /**
+     * 工具参数
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    class ToolParameter {
+        private String name;
+        private String type;
+        private String description;
+        private boolean required;
+        private Object defaultValue;
     }
 
     /**
