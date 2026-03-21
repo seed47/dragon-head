@@ -11,8 +11,6 @@ import org.dragon.character.CharacterRegistry;
 import org.dragon.character.task.Task;
 import org.dragon.character.task.TaskStatus;
 import org.dragon.observer.evaluation.EvaluationEngine;
-import org.dragon.organization.Organization;
-import org.dragon.organization.OrganizationRegistry;
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.slf4j.Logger;
@@ -35,7 +33,6 @@ public class DataCollector {
     private static final Logger log = LoggerFactory.getLogger(DataCollector.class);
 
     private final WorkspaceRegistry workspaceRegistry;
-    private final OrganizationRegistry organizationRegistry;
     private final CharacterRegistry characterRegistry;
 
     /**
@@ -128,6 +125,23 @@ public class DataCollector {
     }
 
     /**
+     * 采集 Workspace 的任务数据
+     *
+     * @param workspaceId Workspace ID
+     * @param startTime 开始时间
+     * @param endTime   结束时间
+     * @return 任务数据列表
+     */
+    public List<EvaluationEngine.TaskData> collectWorkspaceTaskData(String workspaceId, LocalDateTime startTime, LocalDateTime endTime) {
+        List<EvaluationEngine.TaskData> taskDataList = new ArrayList<>();
+
+        // TODO: 需要 Workspace 和 Character 的关联关系
+        // 暂时返回空列表
+
+        return taskDataList;
+    }
+
+    /**
      * 采集性能指标
      *
      * @param workspaceId Workspace ID
@@ -201,7 +215,7 @@ public class DataCollector {
         private String workspaceId;
         private LocalDateTime timestamp;
         private int characterCount;
-        private int organizationCount;
+        private int memberCount;
         private int totalTasks;
         private int completedTasks;
         private int failedTasks;
@@ -215,8 +229,8 @@ public class DataCollector {
         public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
         public int getCharacterCount() { return characterCount; }
         public void setCharacterCount(int characterCount) { this.characterCount = characterCount; }
-        public int getOrganizationCount() { return organizationCount; }
-        public void setOrganizationCount(int organizationCount) { this.organizationCount = organizationCount; }
+        public int getMemberCount() { return memberCount; }
+        public void setMemberCount(int memberCount) { this.memberCount = memberCount; }
         public int getTotalTasks() { return totalTasks; }
         public void setTotalTasks(int totalTasks) { this.totalTasks = totalTasks; }
         public int getCompletedTasks() { return completedTasks; }

@@ -7,10 +7,9 @@ import java.util.UUID;
 
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.organization.OrganizationRegistry;
-import org.dragon.organization.scheduler.OrganizationScheduler;
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
+import org.dragon.workspace.scheduler.WorkspaceScheduler;
 import org.dragon.workspace.context.ExecutionContext;
 import org.dragon.workspace.hiring.Candidate;
 import org.dragon.workspace.hiring.HiringRequest;
@@ -19,6 +18,8 @@ import org.dragon.workspace.hiring.HiringRecord;
 import org.dragon.workspace.hiring.LLMHiringEngine;
 import org.dragon.workspace.material.Material;
 import org.dragon.workspace.material.MaterialService;
+import org.dragon.workspace.member.WorkspaceMember;
+import org.dragon.workspace.member.WorkspaceMemberManagementService;
 import org.dragon.workspace.task.WorkspaceTask;
 import org.dragon.workspace.task.WorkspaceTaskService;
 import org.dragon.workspace.task.WorkspaceTaskStatus;
@@ -46,8 +47,8 @@ public class WorkspaceService {
     private final WorkspaceTaskStore workspaceTaskStore;
     private final MaterialService materialService;
     private final CharacterRegistry characterRegistry;
-    private final OrganizationRegistry organizationRegistry;
-    private final OrganizationScheduler organizationScheduler;
+    private final WorkspaceScheduler workspaceScheduler;
+    private final WorkspaceMemberManagementService memberManagementService;
     private final LLMHiringEngine llmHiringEngine;
 
     // ==================== Workspace 生命周期管理 ====================
@@ -164,6 +165,40 @@ public class WorkspaceService {
         log.info("[WorkspaceService] Archived workspace: {}", workspaceId);
     }
 
+    // ==================== 成员管理 ====================
+
+    /**
+     * 添加成员到工作空间
+     *
+     * @param workspaceId 工作空间 ID
+     * @param characterId Character ID
+     * @param role 角色
+     * @return 添加的成员
+     */
+    public WorkspaceMember addMember(String workspaceId, String characterId, String role) {
+        return memberManagementService.addMember(workspaceId, characterId, role, WorkspaceMember.Layer.NORMAL);
+    }
+
+    /**
+     * 移除工作空间成员
+     *
+     * @param workspaceId 工作空间 ID
+     * @param characterId Character ID
+     */
+    public void removeMember(String workspaceId, String characterId) {
+        memberManagementService.removeMember(workspaceId, characterId);
+    }
+
+    /**
+     * 获取工作空间成员列表
+     *
+     * @param workspaceId 工作空间 ID
+     * @return 成员列表
+     */
+    public List<WorkspaceMember> listMembers(String workspaceId) {
+        return memberManagementService.listMembers(workspaceId);
+    }
+
     // ==================== 雇佣请求管理 ====================
 
     /**
@@ -262,7 +297,7 @@ public class WorkspaceService {
 
     /**
      * 根据雇佣请求分发所有任务
-     * 将任务分发给 Character 或 Organization 执行
+     * 将任务分发给 Character 执行
      *
      * @param workspaceId 工作空间 ID
      * @param hireId 雇佣请求 ID
@@ -318,17 +353,12 @@ public class WorkspaceService {
         // 构建候选人信息
         Candidate candidate = Candidate.builder()
                 .id(record.getCandidateId())
-                .type(record.getCandidateType() == HiringRecord.CandidateType.CHARACTER ?
-                        Candidate.Type.CHARACTER : Candidate.Type.ORGANIZATION)
+                .type(Candidate.Type.CHARACTER)
                 .matchScore(record.getMatchScore())
                 .build();
 
         // 获取执行者名称
-        if (candidate.getType() == Candidate.Type.CHARACTER) {
-            characterRegistry.get(candidate.getId()).ifPresent(c -> candidate.setName(c.getName()));
-        } else {
-            organizationRegistry.get(candidate.getId()).ifPresent(o -> candidate.setName(o.getName()));
-        }
+        characterRegistry.get(candidate.getId()).ifPresent(c -> candidate.setName(c.getName()));
 
         // 创建 WorkspaceTask
         WorkspaceTask task = WorkspaceTask.builder()
@@ -336,8 +366,7 @@ public class WorkspaceService {
                 .workspaceId(workspaceId)
                 .hiringRequestId(request.getId())
                 .hiringRecordId(record.getId())
-                .executorType(record.getCandidateType() == HiringRecord.CandidateType.CHARACTER ?
-                        WorkspaceTask.ExecutorType.CHARACTER : WorkspaceTask.ExecutorType.ORGANIZATION)
+                .executorType(WorkspaceTask.ExecutorType.CHARACTER)
                 .executorId(record.getCandidateId())
                 .name(request.getWorkDescription())
                 .description(request.getWorkDescription())
@@ -354,12 +383,8 @@ public class WorkspaceService {
         context.setTaskId(task.getId());
         context.setWorkspaceId(workspaceId);
 
-        // 根据执行者类型分发任务
-        if (candidate.getType() == Candidate.Type.CHARACTER) {
-            dispatchToCharacter(task, context);
-        } else {
-            dispatchToOrganization(task, context);
-        }
+        // 分发给 Character 执行
+        dispatchToCharacter(task, context);
     }
 
     /**
@@ -388,42 +413,6 @@ public class WorkspaceService {
             log.info("[WorkspaceService] Task dispatched to character: {} -> taskId: {}", characterId, characterTask.getId());
         } catch (Exception e) {
             log.error("[WorkspaceService] Task failed: {}", task.getId(), e);
-            task.setErrorMessage(e.getMessage());
-            task.setStatus(WorkspaceTaskStatus.FAILED);
-            task.setCompletedAt(LocalDateTime.now());
-            workspaceTaskStore.update(task);
-        }
-    }
-
-    /**
-     * 分发给 Organization 执行
-     */
-    private void dispatchToOrganization(WorkspaceTask task, ExecutionContext context) {
-        String organizationId = task.getExecutorId();
-
-        // 更新任务状态为 RUNNING
-        task.setStatus(WorkspaceTaskStatus.RUNNING);
-        task.setStartedAt(LocalDateTime.now());
-        workspaceTaskStore.update(task);
-
-        // 提交给 Organization 执行
-        try {
-            // 使用 OrganizationScheduler 提交任务
-            var orgTask = organizationScheduler.submitTask(
-                    organizationId,
-                    task.getName(),
-                    task.getDescription(),
-                    context.getExecutionPrompt(),
-                    "workspace" // creatorId
-            );
-
-            // 保存内部任务 ID
-            task.setInternalTaskId(orgTask.getId());
-            workspaceTaskStore.update(task);
-
-            log.info("[WorkspaceService] Task submitted to organization: {} -> {}", task.getId(), organizationId);
-        } catch (Exception e) {
-            log.error("[WorkspaceService] Failed to submit task to organization: {}", task.getId(), e);
             task.setErrorMessage(e.getMessage());
             task.setStatus(WorkspaceTaskStatus.FAILED);
             task.setCompletedAt(LocalDateTime.now());

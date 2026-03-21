@@ -13,7 +13,6 @@ import org.dragon.observer.evaluation.EvaluationRecordStore;
 import org.dragon.observer.optimization.OptimizationAction;
 import org.dragon.observer.optimization.OptimizationActionStore;
 import org.dragon.observer.optimization.OptimizationExecutor;
-import org.dragon.organization.OrganizationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,6 @@ public class ObserverService {
     private final CommonSenseValidator commonSenseValidator;
     private final CommonSenseStore commonSenseStore;
     private final CharacterRegistry characterRegistry;
-    private final OrganizationRegistry organizationRegistry;
 
     /**
      * 评价任务
@@ -105,7 +103,8 @@ public class ObserverService {
         if (targetType == EvaluationRecord.TargetType.CHARACTER) {
             taskDataList = dataCollector.collectCharacterTaskData(targetId, startTime, endTime);
         } else {
-            taskDataList = dataCollector.collectOrganizationTaskData(targetId, startTime, endTime);
+            // WORKSPACE 类型的数据采集
+            taskDataList = dataCollector.collectWorkspaceTaskData(targetId, startTime, endTime);
         }
 
         if (taskDataList.isEmpty()) {
@@ -250,7 +249,7 @@ public class ObserverService {
     public List<OptimizationAction> getOptimizationHistory(EvaluationRecord.TargetType targetType, String targetId) {
         OptimizationAction.TargetType type = targetType == EvaluationRecord.TargetType.CHARACTER
                 ? OptimizationAction.TargetType.CHARACTER
-                : OptimizationAction.TargetType.ORGANIZATION;
+                : OptimizationAction.TargetType.WORKSPACE;
         return optimizationActionStore.findByTarget(type, targetId);
     }
 
@@ -285,7 +284,6 @@ public class ObserverService {
         stats.setPendingOptimizations(optimizationActionStore.findPending().size());
         stats.setCommonSenseCount(commonSenseStore.count());
         stats.setCharacterCount(characterRegistry.size());
-        stats.setOrganizationCount(organizationRegistry.size());
 
         return stats;
     }
@@ -300,7 +298,6 @@ public class ObserverService {
         private int pendingOptimizations;
         private int commonSenseCount;
         private int characterCount;
-        private int organizationCount;
 
         // Getters and setters
         public String getObserverId() { return observerId; }
@@ -315,7 +312,5 @@ public class ObserverService {
         public void setCommonSenseCount(int commonSenseCount) { this.commonSenseCount = commonSenseCount; }
         public int getCharacterCount() { return characterCount; }
         public void setCharacterCount(int characterCount) { this.characterCount = characterCount; }
-        public int getOrganizationCount() { return organizationCount; }
-        public void setOrganizationCount(int organizationCount) { this.organizationCount = organizationCount; }
     }
 }

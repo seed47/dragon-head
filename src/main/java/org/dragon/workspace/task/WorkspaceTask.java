@@ -1,6 +1,7 @@
 package org.dragon.workspace.task;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,8 +25,7 @@ public class WorkspaceTask {
      * 执行者类型
      */
     public enum ExecutorType {
-        CHARACTER,
-        ORGANIZATION
+        CHARACTER
     }
 
     /**
@@ -49,12 +49,17 @@ public class WorkspaceTask {
     private String hiringRecordId;
 
     /**
+     * 创建者 ID
+     */
+    private String creatorId;
+
+    /**
      * 执行者类型
      */
     private ExecutorType executorType;
 
     /**
-     * 执行者 ID（Character ID 或 Organization ID）
+     * 执行者 ID（Character ID）
      */
     private String executorId;
 
@@ -82,10 +87,15 @@ public class WorkspaceTask {
     /**
      * 任务输入
      */
-    private String input;
+    private Object input;
 
     /**
      * 任务输出/结果
+     */
+    private Object output;
+
+    /**
+     * 任务结果（String 形式，用于兼容）
      */
     private String result;
 
@@ -93,6 +103,21 @@ public class WorkspaceTask {
      * 错误信息
      */
     private String errorMessage;
+
+    /**
+     * 子任务 ID 列表
+     */
+    private List<String> subTaskIds;
+
+    /**
+     * 协作会话 ID
+     */
+    private String collaborationSessionId;
+
+    /**
+     * 分配的成员 ID 列表
+     */
+    private List<String> assignedMemberIds;
 
     /**
      * 创建时间

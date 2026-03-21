@@ -27,7 +27,6 @@ public class HiringRequest {
      */
     public enum TargetType {
         CHARACTER,      // 指定 Character
-        ORGANIZATION,   // 指定 Organization
         ROLE,           // 指定角色类型，由 Workspace 自动筛选
         AUTO            // 自动匹配最优执行者
     }
@@ -53,7 +52,7 @@ public class HiringRequest {
     private TargetType targetType;
 
     /**
-     * 指定目标 ID（当 targetType 为 CHARACTER/ORGANIZATION 时）
+     * 指定目标 ID（当 targetType 为 CHARACTER 时）
      */
     private String targetId;
 

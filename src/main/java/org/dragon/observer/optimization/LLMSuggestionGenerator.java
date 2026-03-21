@@ -14,9 +14,6 @@ import org.dragon.observer.collector.DataCollector;
 import org.dragon.observer.evaluation.EvaluationEngine;
 import org.dragon.observer.evaluation.EvaluationRecord;
 import org.dragon.observer.evaluation.EvaluationRecordStore;
-import org.dragon.organization.Organization;
-import org.dragon.organization.OrganizationRegistry;
-import org.dragon.organization.personality.OrganizationPersonality;
 import org.dragon.util.GsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +46,6 @@ public class LLMSuggestionGenerator {
     private final LLMCaller llmCaller;
     private final DataCollector dataCollector;
     private final CharacterRegistry characterRegistry;
-    private final OrganizationRegistry organizationRegistry;
     private final EvaluationRecordStore evaluationRecordStore;
     private final PromptManager promptManager;
 
@@ -114,8 +110,8 @@ public class LLMSuggestionGenerator {
         switch (targetType) {
             case CHARACTER:
                 return collectCharacterState(targetId);
-            case ORGANIZATION:
-                return collectOrganizationState(targetId);
+            case WORKSPACE:
+                return collectWorkspaceState(targetId);
             default:
                 return state;
         }
@@ -160,22 +156,21 @@ public class LLMSuggestionGenerator {
     private Map<String, Object> collectOrganizationState(String orgId) {
         Map<String, Object> state = new HashMap<>();
 
-        Organization organization = organizationRegistry.get(orgId).orElse(null);
-        if (organization == null) {
-            log.warn("[LLMSuggestionGenerator] Organization not found: {}", orgId);
-            return state;
-        }
+        // TODO: Replace with Workspace state collection
+        // Organization 已移除，暂时返回空状态
 
-        state.put("id", organization.getId());
-        state.put("name", organization.getName());
-        state.put("description", organization.getDescription());
-        state.put("properties", organization.getProperties());
-        state.put("advantages", organization.getAdvantages());
+        return state;
+    }
 
-        OrganizationPersonality personality = organization.getPersonality();
-        if (personality != null) {
-            state.put("personality", personality);
-        }
+    /**
+     * 收集 Workspace 当前状态
+     */
+    private Map<String, Object> collectWorkspaceState(String workspaceId) {
+        Map<String, Object> state = new HashMap<>();
+
+        // TODO: 从 WorkspaceRegistry 获取 Workspace 状态
+        // 暂时返回空状态
+        state.put("id", workspaceId);
 
         return state;
     }
@@ -196,8 +191,8 @@ public class LLMSuggestionGenerator {
             case CHARACTER:
                 allTasks = dataCollector.collectCharacterTaskData(targetId, startTime, endTime);
                 break;
-            case ORGANIZATION:
-                allTasks = dataCollector.collectOrganizationTaskData(targetId, startTime, endTime);
+            case WORKSPACE:
+                allTasks = dataCollector.collectWorkspaceTaskData(targetId, startTime, endTime);
                 break;
             default:
                 return new ArrayList<>();
@@ -219,7 +214,7 @@ public class LLMSuggestionGenerator {
 
         EvaluationRecord.TargetType evalTargetType = targetType == OptimizationAction.TargetType.CHARACTER
                 ? EvaluationRecord.TargetType.CHARACTER
-                : EvaluationRecord.TargetType.ORGANIZATION;
+                : EvaluationRecord.TargetType.WORKSPACE;
 
         return evaluationRecordStore.findByTargetAndTimeRange(evalTargetType, targetId, startTime, endTime);
     }

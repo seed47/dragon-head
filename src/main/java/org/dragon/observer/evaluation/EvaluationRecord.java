@@ -27,7 +27,7 @@ public class EvaluationRecord {
      */
     public enum TargetType {
         CHARACTER,     // Character
-        ORGANIZATION   // Organization
+        WORKSPACE      // Workspace
     }
 
     /**

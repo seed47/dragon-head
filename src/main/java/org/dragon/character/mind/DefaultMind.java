@@ -2,7 +2,7 @@ package org.dragon.character.mind;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dragon.character.mind.memory.MemoryAccess;
-import org.dragon.character.mind.skill.SkillAccess;
+import org.dragon.skill.SkillAccess;
 import org.dragon.character.mind.tag.Tag;
 import org.dragon.character.mind.tag.TagRepository;
 

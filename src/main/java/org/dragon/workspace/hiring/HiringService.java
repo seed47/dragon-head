@@ -8,8 +8,6 @@ import java.util.UUID;
 
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.organization.Organization;
-import org.dragon.organization.OrganizationRegistry;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +31,6 @@ public class HiringService {
     private final HiringRecordStore hiringRecordStore;
     private final LLMHiringEngine llmHiringEngine;
     private final CharacterRegistry characterRegistry;
-    private final OrganizationRegistry organizationRegistry;
 
     /**
      * 提交雇佣请求
@@ -82,9 +79,6 @@ public class HiringService {
             switch (request.getTargetType()) {
                 case CHARACTER:
                     acceptedCandidates = handleCharacterTarget(request);
-                    break;
-                case ORGANIZATION:
-                    acceptedCandidates = handleOrganizationTarget(request);
                     break;
                 case ROLE:
                 case AUTO:
@@ -142,40 +136,10 @@ public class HiringService {
     }
 
     /**
-     * 处理指定 Organization 的雇佣
-     */
-    private List<Candidate> handleOrganizationTarget(HiringRequest request) {
-        String targetId = request.getTargetId();
-        if (targetId == null || targetId.isEmpty()) {
-            throw new IllegalArgumentException("Target ID is required for ORGANIZATION target type");
-        }
-
-        // 验证 Organization 存在
-        Organization organization = organizationRegistry.get(targetId)
-                .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + targetId));
-
-        // 创建候选人
-        Candidate candidate = Candidate.builder()
-                .id(organization.getId())
-                .type(Candidate.Type.ORGANIZATION)
-                .name(organization.getName())
-                .description(organization.getDescription())
-                .matchScore(100)
-                .build();
-
-        // 创建雇佣记录
-        createHiringRecord(request, candidate, HiringRecord.Decision.ACCEPTED, "Direct hire - specified organization");
-
-        List<Candidate> result = new ArrayList<>();
-        result.add(candidate);
-        return result;
-    }
-
-    /**
      * 处理自动匹配（使用 LLM）
      */
     private List<Candidate> handleAutoMatch(HiringRequest request) {
-        // 获取所有可用的 Character 和 Organization
+        // 获取所有可用的 Character
         List<Candidate> availableCandidates = new ArrayList<>();
 
         // 添加所有 Character
@@ -186,18 +150,6 @@ public class HiringService {
                         .type(Candidate.Type.CHARACTER)
                         .name(character.getName())
                         .description(character.getDescription())
-                        .build());
-            }
-        }
-
-        // 添加所有 Organization
-        for (Organization org : organizationRegistry.listAll()) {
-            if (org.getStatus() == Organization.Status.ACTIVE) {
-                availableCandidates.add(Candidate.builder()
-                        .id(org.getId())
-                        .type(Candidate.Type.ORGANIZATION)
-                        .name(org.getName())
-                        .description(org.getDescription())
                         .build());
             }
         }
@@ -224,8 +176,7 @@ public class HiringService {
                 .id(UUID.randomUUID().toString())
                 .hiringRequestId(request.getId())
                 .candidateId(candidate.getId())
-                .candidateType(candidate.getType() == Candidate.Type.CHARACTER ?
-                        HiringRecord.CandidateType.CHARACTER : HiringRecord.CandidateType.ORGANIZATION)
+                .candidateType(HiringRecord.CandidateType.CHARACTER)
                 .decision(decision)
                 .reason(reason)
                 .matchScore(candidate.getMatchScore())

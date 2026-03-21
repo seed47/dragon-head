@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Candidate 候选人抽象
- * 代表可以被雇佣执行任务的 Character 或 Organization
+ * 代表可以被雇佣执行任务的 Character
  *
  * @author wyj
  * @version 1.0
@@ -22,8 +22,7 @@ public class Candidate {
      * 候选人类型
      */
     public enum Type {
-        CHARACTER,
-        ORGANIZATION
+        CHARACTER
     }
 
     /**

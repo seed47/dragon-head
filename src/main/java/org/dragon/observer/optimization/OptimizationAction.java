@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * OptimizationAction 优化动作实体
- * 定义对 Character 或 Organization 的优化操作
+ * 定义对 Character 或 Workspace 的优化操作
  *
  * @author wyj
  * @version 1.0
@@ -26,7 +26,7 @@ public class OptimizationAction {
      */
     public enum TargetType {
         CHARACTER,
-        ORGANIZATION
+        WORKSPACE
     }
 
     /**

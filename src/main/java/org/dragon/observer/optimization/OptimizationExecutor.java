@@ -16,10 +16,6 @@ import org.dragon.observer.evaluation.EvaluationRecord;
 import org.dragon.observer.evaluation.EvaluationRecordStore;
 import org.dragon.observer.log.ModificationLog;
 import org.dragon.observer.log.ModificationLogStore;
-import org.dragon.organization.Organization;
-import org.dragon.organization.OrganizationEnhancer;
-import org.dragon.organization.OrganizationRegistry;
-import org.dragon.organization.personality.OrganizationPersonality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -44,9 +40,8 @@ public class OptimizationExecutor {
     private final CommonSenseValidator commonSenseValidator;
     private final EvaluationRecordStore evaluationRecordStore;
     private final CharacterRegistry characterRegistry;
-    private final OrganizationRegistry organizationRegistry;
+    // TODO: OrganizationRegistry 和 OrganizationEnhancer 已移除，需要替换为 Workspace 相关
     private final LLMSuggestionGenerator suggestionGenerator;
-    private final OrganizationEnhancer organizationEnhancer;
 
     /**
      * 执行优化动作
@@ -248,7 +243,7 @@ public class OptimizationExecutor {
                 .evaluationId(evaluation.getId())
                 .targetType(evaluation.getTargetType() == EvaluationRecord.TargetType.CHARACTER
                         ? OptimizationAction.TargetType.CHARACTER
-                        : OptimizationAction.TargetType.ORGANIZATION)
+                        : OptimizationAction.TargetType.WORKSPACE)
                 .targetId(evaluation.getTargetId())
                 .actionType(actionType)
                 .parameters(params)
@@ -265,16 +260,24 @@ public class OptimizationExecutor {
             case CHARACTER:
                 applyCharacterModification(action);
                 break;
-            case ORGANIZATION:
-                applyOrganizationModification(action);
+            case WORKSPACE:
+                applyWorkspaceModification(action);
                 break;
         }
     }
 
     /**
+     * 应用 Workspace 修改
+     */
+    private void applyWorkspaceModification(OptimizationAction action) {
+        // TODO: Organization 已移除，需要实现 Workspace 的优化逻辑
+        log.warn("[OptimizationExecutor] Workspace modification not implemented yet");
+    }
+
+    /**
      * 使用 LLM 生成的建议执行优化
      * 这是 Observer 优化功能的核心方法，通过 LLM 分析任务执行数据，
-     * 生成优化建议，然后应用到 Character 或 Organization
+     * 生成优化建议，然后应用到 Character 或 Workspace
      *
      * @param action 优化动作
      * @return 执行后的动作
@@ -315,7 +318,7 @@ public class OptimizationExecutor {
                 case CHARACTER:
                     applyCharacterModificationWithLLM(action.getTargetId(), suggestions);
                     break;
-                case ORGANIZATION:
+                case WORKSPACE:
                     applyOrganizationModificationWithLLM(action.getTargetId(), suggestions);
                     break;
             }
@@ -395,17 +398,8 @@ public class OptimizationExecutor {
      * 使用 LLM 建议修改 Organization
      */
     private void applyOrganizationModificationWithLLM(String orgId, List<String> suggestions) {
-        Organization organization = organizationRegistry.get(orgId)
-                .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + orgId));
-
-        // 通过 OrganizationEnhancer 增强 personality
-        OrganizationPersonality updatedPersonality = organizationEnhancer.enhanceByLLM(organization, suggestions);
-        if (updatedPersonality != null) {
-            organization.setPersonality(updatedPersonality);
-            log.info("[OptimizationExecutor] Updated Organization personality via LLM: {}", orgId);
-        }
-
-        organizationRegistry.update(organization);
+        // TODO: Organization 已移除，需要实现 Workspace 的 LLM 优化逻辑
+        log.warn("[OptimizationExecutor] Organization LLM modification not implemented yet");
     }
 
     /**
@@ -451,41 +445,10 @@ public class OptimizationExecutor {
     /**
      * 应用 Organization 修改
      */
+    @SuppressWarnings("unused")
     private void applyOrganizationModification(OptimizationAction action) {
-        Organization organization = organizationRegistry.get(action.getTargetId())
-                .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + action.getTargetId()));
-
-        OrganizationPersonality personality = organization.getPersonality();
-        if (personality == null) {
-            personality = OrganizationPersonality.builder().build();
-        }
-
-        switch (action.getActionType()) {
-            case UPDATE_PERSONALITY:
-                // 更新 personality
-                if (action.getParameters().containsKey("workingStyle")) {
-                    personality.setWorkingStyle(
-                            OrganizationPersonality.WorkingStyle.valueOf(
-                                    action.getParameters().get("workingStyle").toString()));
-                }
-                if (action.getParameters().containsKey("riskTolerance")) {
-                    personality.setRiskTolerance(
-                            Double.parseDouble(action.getParameters().get("riskTolerance").toString()));
-                }
-                break;
-            case ADJUST_WEIGHT:
-                // 调整权重
-                if (action.getParameters().containsKey("defaultWeight")) {
-                    organization.setDefaultWeight(
-                            Double.parseDouble(action.getParameters().get("defaultWeight").toString()));
-                }
-                break;
-            default:
-                log.warn("[OptimizationExecutor] Unsupported action type for Organization: {}", action.getActionType());
-        }
-
-        organization.setPersonality(personality);
-        organizationRegistry.update(organization);
+        // TODO: Organization 已移除，需要实现 Workspace 的优化逻辑
+        log.warn("[OptimizationExecutor] Organization modification not implemented yet");
     }
 
     /**
@@ -495,7 +458,7 @@ public class OptimizationExecutor {
         switch (targetType) {
             case CHARACTER:
                 return captureCharacterSnapshot(targetId);
-            case ORGANIZATION:
+            case WORKSPACE:
                 return captureOrganizationSnapshot(targetId);
             default:
                 return "{}";
@@ -515,9 +478,8 @@ public class OptimizationExecutor {
     }
 
     private String captureOrganizationSnapshot(String orgId) {
-        return organizationRegistry.get(orgId)
-                .map(o -> o.getPersonality() != null ? o.getPersonality().toString() : "{}")
-                .orElse("{}");
+        // TODO: Organization 已移除，需要实现 Workspace 的快照逻辑
+        return "{}";
     }
 
     /**

@@ -33,8 +33,7 @@ public class HiringRecord {
      * 候选人类型
      */
     public enum CandidateType {
-        CHARACTER,
-        ORGANIZATION
+        CHARACTER
     }
 
     /**
@@ -53,7 +52,7 @@ public class HiringRecord {
     private String candidateId;
 
     /**
-     * 候选人类型（CHARACTER 或 ORGANIZATION）
+     * 候选人类型（CHARACTER）
      */
     private CandidateType candidateType;
 
