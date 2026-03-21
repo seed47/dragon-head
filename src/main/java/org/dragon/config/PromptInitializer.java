@@ -40,6 +40,9 @@ public class PromptInitializer implements CommandLineRunner {
         // 初始化 Character 相关 prompts
         initCharacterPrompts();
 
+        // 初始化 HR 相关 prompts
+        initHrPrompts();
+
         log.info("[PromptInitializer] Prompt initialization completed");
     }
 
@@ -79,6 +82,58 @@ public class PromptInitializer implements CommandLineRunner {
         // Character Task Prompt
         promptManager.setGlobalPrompt(PromptKeys.CHARACTER_TASK,
                 "请根据要求完成以下任务：");
+    }
+
+    private void initHrPrompts() {
+        // HR 雇佣决策 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.HR_HIRE_DECISION,
+                """
+                请评估是否应该雇佣以下 Character 到工作空间：
+
+                Character 名称: %s
+                Character 描述: %s
+
+                请返回以下格式的决策：
+                - APPROVE：批准雇佣
+                - DENY：拒绝雇佣
+                - 需要更多信息
+
+                如果批准，请简要说明理由。
+                """);
+
+        // HR 雇佣选择 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.HR_HIRE_SELECT,
+                "请从以下候选 Character 中选择一个最合适雇佣的：");
+
+        // HR 解雇决策 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.HR_FIRE_DECISION,
+                """
+                请评估是否应该解雇工作空间中的以下 Character：
+
+                Character ID: %s
+
+                请返回以下格式的决策：
+                - APPROVE：批准解雇
+                - DENY：拒绝解雇
+                - 需要更多信息
+
+                如果批准，请简要说明理由。
+                """);
+
+        // HR 生成职责描述 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.HR_DUTY_GENERATE,
+                """
+                请为以下 Character 生成一个合适的职责描述：
+
+                Character 名称: %s
+                Character 描述: %s
+
+                请用 1-2 句话简洁描述该 Character 在工作空间中的职责。
+                """);
+
+        // 通用选择 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.SELECTION_GENERIC,
+                "请从以下候选中选择一个最合适的：");
     }
 
     /**

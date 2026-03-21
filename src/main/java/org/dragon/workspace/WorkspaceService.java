@@ -7,14 +7,15 @@ import java.util.UUID;
 
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.workspace.context.ExecutionContext;
-import org.dragon.workspace.hiring.Candidate;
-import org.dragon.workspace.hiring.HiringRecord;
-import org.dragon.workspace.hiring.HiringRequest;
-import org.dragon.workspace.hiring.HiringService;
-import org.dragon.workspace.hiring.LLMHiringEngine;
+import org.dragon.workspace.actionlog.WorkspaceActionLog;
+import org.dragon.workspace.actionlog.WorkspaceActionLogStore;
+import org.dragon.workspace.built_ins.character.hr.HrCharacterFactory;
+import org.dragon.workspace.built_ins.character.hr.HrHiringExecutor;
+import org.dragon.workspace.hiring.HireMode;
 import org.dragon.workspace.material.Material;
 import org.dragon.workspace.material.MaterialService;
+import org.dragon.workspace.member.CharacterDuty;
+import org.dragon.workspace.member.CharacterDutyStore;
 import org.dragon.workspace.member.WorkspaceMember;
 import org.dragon.workspace.member.WorkspaceMemberManagementService;
 import org.dragon.workspace.scheduler.WorkspaceScheduler;
@@ -29,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * WorkspaceService 工作空间主服务
- * 提供工作空间的完整管理能力
+ * 提供工作空间的完整管理能力，包括雇佣管理
  *
  * @author wyj
  * @version 1.0
@@ -40,14 +41,18 @@ import lombok.extern.slf4j.Slf4j;
 public class WorkspaceService {
 
     private final WorkspaceRegistry workspaceRegistry;
-    private final HiringService hiringService;
     private final WorkspaceTaskService workspaceTaskService;
     private final WorkspaceTaskStore workspaceTaskStore;
     private final MaterialService materialService;
     private final CharacterRegistry characterRegistry;
     private final WorkspaceScheduler workspaceScheduler;
     private final WorkspaceMemberManagementService memberManagementService;
-    private final LLMHiringEngine llmHiringEngine;
+
+    // 雇佣管理相关依赖
+    private final CharacterDutyStore characterDutyStore;
+    private final WorkspaceActionLogStore actionLogStore;
+    private final HrCharacterFactory hrCharacterFactory;
+    private final HrHiringExecutor hrHiringExecutor;
 
     // ==================== Workspace 生命周期管理 ====================
 
@@ -197,53 +202,288 @@ public class WorkspaceService {
         return memberManagementService.listMembers(workspaceId);
     }
 
-    // ==================== 雇佣请求管理 ====================
+    // ==================== 雇佣管理 ====================
 
     /**
-     * 发布雇佣请求
+     * 雇佣 Character 到 Workspace
      *
      * @param workspaceId 工作空间 ID
-     * @param request 雇佣请求
-     * @return 雇佣请求
+     * @param characterId 要雇佣的 Character ID
+     * @param mode 雇佣模式
      */
-    public HiringRequest publishHiringRequest(String workspaceId, HiringRequest request) {
-        return hiringService.submitHiringRequest(workspaceId, request);
+    public void hire(String workspaceId, String characterId, HireMode mode) {
+        hire(workspaceId, characterId, mode, null);
     }
 
     /**
-     * 获取雇佣请求
+     * 雇佣 Character 到 Workspace (指定默认 Character 池)
      *
      * @param workspaceId 工作空间 ID
-     * @param hireId 雇佣请求 ID
-     * @return 雇佣请求
+     * @param characterId 要雇佣的 Character ID（AUTO 模式下可为 null，表示自动选择）
+     * @param mode 雇佣模式
+     * @param defaultCharacterIds 默认 Character 池
      */
-    public Optional<HiringRequest> getHiringRequest(String workspaceId, String hireId) {
-        return hiringService.getHiringRequest(workspaceId, hireId);
-    }
-
-    /**
-     * 获取雇佣请求列表
-     *
-     * @param workspaceId 工作空间 ID
-     * @return 雇佣请求列表
-     */
-    public List<HiringRequest> listHiringRequests(String workspaceId) {
-        return hiringService.listHiringRequests(workspaceId);
-    }
-
-    /**
-     * 获取雇佣记录
-     *
-     * @param workspaceId 工作空间 ID
-     * @param hireId 雇佣请求 ID
-     * @return 雇佣记录列表
-     */
-    public List<HiringRecord> getHiringRecords(String workspaceId, String hireId) {
-        // 验证工作空间
+    public void hire(String workspaceId, String characterId, HireMode mode, List<String> defaultCharacterIds) {
+        // 验证 workspace 存在
         workspaceRegistry.get(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
 
-        return hiringService.getHiringRecords(hireId);
+        switch (mode) {
+            case DEFAULT:
+            case MANUAL:
+                // DEFAULT 和 MANUAL 模式需要指定 characterId
+                if (characterId == null) {
+                    throw new IllegalArgumentException("characterId is required for DEFAULT and MANUAL mode");
+                }
+                Character character = characterRegistry.get(characterId)
+                        .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
+                if (mode == HireMode.DEFAULT) {
+                    hireDefault(workspaceId, character, defaultCharacterIds);
+                } else {
+                    hireManual(workspaceId, character);
+                }
+                break;
+            case AUTO:
+                // AUTO 模式支持自动选择 Character
+                hireAuto(workspaceId, characterId);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown hire mode: " + mode);
+        }
+    }
+
+    /**
+     * 从 Workspace 解雇 Character
+     *
+     * @param workspaceId 工作空间 ID
+     * @param characterId 要解雇的 Character ID
+     * @param mode 雇佣模式
+     */
+    public void fire(String workspaceId, String characterId, HireMode mode) {
+        // 验证 workspace 存在
+        workspaceRegistry.get(workspaceId)
+                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
+
+        switch (mode) {
+            case DEFAULT:
+            case MANUAL:
+                fireManual(workspaceId, characterId);
+                break;
+            case AUTO:
+                fireAuto(workspaceId, characterId);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown hire mode: " + mode);
+        }
+    }
+
+    // ==================== HR Character ====================
+
+    /**
+     * 获取 Workspace 的 HR Character
+     *
+     * @param workspaceId Workspace ID
+     * @return HR Character (如果存在)
+     */
+    public Optional<Character> getHrCharacter(String workspaceId) {
+        if (hrCharacterFactory.hasHrCharacter(workspaceId)) {
+            return Optional.of(hrCharacterFactory.getOrCreateHrCharacter(workspaceId));
+        }
+        return Optional.empty();
+    }
+
+    // ==================== Character Duty 管理 ====================
+
+    /**
+     * 设置 Character 的职责描述
+     *
+     * @param workspaceId 工作空间 ID
+     * @param characterId Character ID
+     * @param dutyDescription 职责描述
+     */
+    public void setCharacterDuty(String workspaceId, String characterId, String dutyDescription) {
+        // 验证 workspace 和 character 存在
+        workspaceRegistry.get(workspaceId)
+                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
+        characterRegistry.get(characterId)
+                .orElseThrow(() -> new IllegalArgumentException("Character not found: " + characterId));
+
+        String dutyId = CharacterDuty.createId(workspaceId, characterId);
+        Optional<CharacterDuty> existing = characterDutyStore.findById(dutyId);
+
+        LocalDateTime now = LocalDateTime.now();
+        CharacterDuty duty;
+        if (existing.isPresent()) {
+            duty = existing.get();
+            duty.setDutyDescription(dutyDescription);
+            duty.setAutoGenerated(false);
+            duty.setUpdatedAt(now);
+            characterDutyStore.update(duty);
+        } else {
+            duty = CharacterDuty.builder()
+                    .id(dutyId)
+                    .workspaceId(workspaceId)
+                    .characterId(characterId)
+                    .dutyDescription(dutyDescription)
+                    .autoGenerated(false)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            characterDutyStore.save(duty);
+        }
+
+        // 记录动作日志
+        logAction(workspaceId, WorkspaceActionLog.ActionType.UPDATE_DUTY, characterId, "user",
+                "Updated duty description: " + dutyDescription);
+
+        log.info("[WorkspaceService] Set duty for character {} in workspace {}", characterId, workspaceId);
+    }
+
+    /**
+     * 获取 Character 的职责描述
+     *
+     * @param workspaceId 工作空间 ID
+     * @param characterId Character ID
+     * @return Character Duty
+     */
+    public Optional<CharacterDuty> getCharacterDuty(String workspaceId, String characterId) {
+        return characterDutyStore.findByWorkspaceIdAndCharacterId(workspaceId, characterId);
+    }
+
+    // ==================== 动作日志 ====================
+
+    /**
+     * 获取 Workspace 的动作日志
+     *
+     * @param workspaceId 工作空间 ID
+     * @return 动作日志列表
+     */
+    public List<WorkspaceActionLog> getActionLogs(String workspaceId) {
+        return actionLogStore.findByWorkspaceId(workspaceId);
+    }
+
+    // ==================== 私有方法：雇佣实现 ====================
+
+    /**
+     * 默认模式雇佣
+     */
+    private void hireDefault(String workspaceId, Character character, List<String> defaultCharacterIds) {
+        // 如果指定了默认 Character 池，验证目标是否在池中
+        if (defaultCharacterIds != null && !defaultCharacterIds.isEmpty()) {
+            if (!defaultCharacterIds.contains(character.getId())) {
+                throw new IllegalArgumentException("Character not in default pool: " + character.getId());
+            }
+        }
+
+        // 添加成员
+        memberManagementService.addMember(workspaceId, character.getId(), "MEMBER",
+                WorkspaceMember.Layer.NORMAL);
+
+        // 记录动作日志
+        logAction(workspaceId, WorkspaceActionLog.ActionType.HIRE, character.getId(), "user",
+                "Hired via DEFAULT mode");
+
+        log.info("[WorkspaceService] Hired character {} to workspace {} via DEFAULT mode",
+                character.getId(), workspaceId);
+    }
+
+    /**
+     * 手动模式雇佣
+     */
+    private void hireManual(String workspaceId, Character character) {
+        // 添加成员
+        memberManagementService.addMember(workspaceId, character.getId(), "MEMBER",
+                WorkspaceMember.Layer.NORMAL);
+
+        // 记录动作日志
+        logAction(workspaceId, WorkspaceActionLog.ActionType.HIRE, character.getId(), "user",
+                "Hired via MANUAL mode");
+
+        log.info("[WorkspaceService] Hired character {} to workspace {} via MANUAL mode",
+                character.getId(), workspaceId);
+    }
+
+    /**
+     * 自动模式雇佣 (HR Character)
+     * @param workspaceId Workspace ID
+     * @param characterId 要雇佣的 Character ID，如果为 null 则自动选择
+     */
+    private void hireAuto(String workspaceId, String characterId) {
+        // 获取当前 workspace 的成员，排除已在其中的 Character
+        List<String> currentMemberIds = memberManagementService.listMembers(workspaceId)
+                .stream()
+                .map(m -> m.getCharacterId())
+                .toList();
+
+        // 获取所有可用 Character
+        List<Character> availableCharacters = characterRegistry.listAll().stream()
+                .filter(c -> !currentMemberIds.contains(c.getId()))
+                .filter(c -> c.getStatus() == Character.Status.RUNNING)
+                .toList();
+
+        if (availableCharacters.isEmpty()) {
+            log.warn("[WorkspaceService] No available characters to hire in workspace {}", workspaceId);
+            return;
+        }
+
+        // 调用 HrHiringExecutor 执行自动雇佣
+        hrHiringExecutor.hireAuto(workspaceId, characterId, availableCharacters, (hiredCharacter) -> {
+            // 执行实际的雇佣操作
+            memberManagementService.addMember(workspaceId, hiredCharacter.getId(), "MEMBER",
+                    WorkspaceMember.Layer.NORMAL);
+            logAction(workspaceId, WorkspaceActionLog.ActionType.HIRE, hiredCharacter.getId(), "hr",
+                    "Hired via AUTO mode with auto-selection");
+            log.info("[WorkspaceService] Hired character {} to workspace {} via AUTO mode",
+                    hiredCharacter.getId(), workspaceId);
+        });
+    }
+
+    /**
+     * 手动模式解雇
+     */
+    private void fireManual(String workspaceId, String characterId) {
+        // 移除成员
+        memberManagementService.removeMember(workspaceId, characterId);
+
+        // 记录动作日志
+        logAction(workspaceId, WorkspaceActionLog.ActionType.FIRE, characterId, "user",
+                "Fired via MANUAL mode");
+
+        log.info("[WorkspaceService] Fired character {} from workspace {} via MANUAL mode",
+                characterId, workspaceId);
+    }
+
+    /**
+     * 自动模式解雇 (HR Character)
+     */
+    private void fireAuto(String workspaceId, String characterId) {
+        hrHiringExecutor.fireAuto(workspaceId, characterId, () -> {
+            // 执行实际的解雇操作
+            memberManagementService.removeMember(workspaceId, characterId);
+            logAction(workspaceId, WorkspaceActionLog.ActionType.FIRE, characterId, "hr",
+                    "Fired via AUTO mode");
+        });
+
+        log.info("[WorkspaceService] Fired character {} from workspace {} via AUTO mode",
+                characterId, workspaceId);
+    }
+
+    /**
+     * 记录动作日志
+     */
+    private void logAction(String workspaceId, WorkspaceActionLog.ActionType actionType,
+                           String characterId, String operator, String details) {
+        WorkspaceActionLog log = WorkspaceActionLog.builder()
+                .id(UUID.randomUUID().toString())
+                .workspaceId(workspaceId)
+                .actionType(actionType)
+                .targetCharacterId(characterId)
+                .operator(operator)
+                .details(details)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        actionLogStore.save(log);
     }
 
     // ==================== 任务管理 ====================
@@ -294,33 +534,6 @@ public class WorkspaceService {
     // ==================== 任务分发执行 ====================
 
     /**
-     * 根据雇佣请求分发所有任务
-     * 将任务分发给 Character 执行
-     *
-     * @param workspaceId 工作空间 ID
-     * @param hireId 雇佣请求 ID
-     */
-    public void dispatchTasksByHiringRequest(String workspaceId, String hireId) {
-        // 验证工作空间
-        workspaceRegistry.get(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
-
-        // 获取雇佣记录
-        List<HiringRecord> records = hiringService.getHiringRecords(hireId);
-        HiringRequest request = hiringService.getHiringRequest(workspaceId, hireId)
-                .orElseThrow(() -> new IllegalArgumentException("Hiring request not found: " + hireId));
-
-        // 为每个被录用的候选人创建任务并分发
-        for (HiringRecord record : records) {
-            if (record.getDecision() == HiringRecord.Decision.ACCEPTED) {
-                dispatchTask(workspaceId, request, record);
-            }
-        }
-
-        log.info("[WorkspaceService] Dispatched tasks for hiring request: {}", hireId);
-    }
-
-    /**
      * 执行即时任务（用于即时聊天等场景）
      * 直接分发给 Character 执行
      *
@@ -341,54 +554,11 @@ public class WorkspaceService {
     }
 
     /**
-     * 分发单个任务
+     * 分发给 Character 执行任务
      *
-     * @param workspaceId 工作空间 ID
-     * @param request 雇佣请求
-     * @param record 雇佣记录
+     * @param task 任务
      */
-    private void dispatchTask(String workspaceId, HiringRequest request, HiringRecord record) {
-        // 构建候选人信息
-        Candidate candidate = Candidate.builder()
-                .id(record.getCandidateId())
-                .type(Candidate.Type.CHARACTER)
-                .matchScore(record.getMatchScore())
-                .build();
-
-        // 获取执行者名称
-        characterRegistry.get(candidate.getId()).ifPresent(c -> candidate.setName(c.getName()));
-
-        // 创建 WorkspaceTask
-        WorkspaceTask task = WorkspaceTask.builder()
-                .id(UUID.randomUUID().toString())
-                .workspaceId(workspaceId)
-                .hiringRequestId(request.getId())
-                .hiringRecordId(record.getId())
-                .executorType(WorkspaceTask.ExecutorType.CHARACTER)
-                .executorId(record.getCandidateId())
-                .name(request.getWorkDescription())
-                .description(request.getWorkDescription())
-                .status(WorkspaceTaskStatus.PENDING)
-                .input(request.getWorkDescription())
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        workspaceTaskStore.save(task);
-        log.info("[WorkspaceService] Created task: {} for executor: {}", task.getId(), candidate.getId());
-
-        // 构建执行上下文
-        ExecutionContext context = llmHiringEngine.buildExecutionContext(request, candidate);
-        context.setTaskId(task.getId());
-        context.setWorkspaceId(workspaceId);
-
-        // 分发给 Character 执行
-        dispatchToCharacter(task, context);
-    }
-
-    /**
-     * 分发给 Character 执行
-     */
-    private void dispatchToCharacter(WorkspaceTask task, ExecutionContext context) {
+    private void dispatchToCharacter(WorkspaceTask task) {
         String characterId = task.getExecutorId();
 
         // 更新任务状态为 RUNNING
@@ -403,7 +573,8 @@ public class WorkspaceService {
         // 执行任务（异步）
         // 这里使用 addTaskAndRun 异步执行
         try {
-            org.dragon.character.task.Task characterTask = character.addTaskAndRun(context.getExecutionPrompt());
+            String taskInput = task.getInput() != null ? task.getInput().toString() : "";
+            org.dragon.character.task.Task characterTask = character.addTaskAndRun(taskInput);
             // 保存 Character 任务 ID
             task.setInternalTaskId(characterTask.getId());
             task.setStatus(WorkspaceTaskStatus.RUNNING);
@@ -477,4 +648,5 @@ public class WorkspaceService {
     public List<Material> listMaterials(String workspaceId) {
         return materialService.listByWorkspace(workspaceId);
     }
+
 }

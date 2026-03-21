@@ -57,6 +57,35 @@ public class PromptKeys {
      */
     public static final String ORG_COLLABORATION = "org.collaboration";
 
+    // ==================== HR 模块 ====================
+
+    /**
+     * HR 雇佣决策 prompt
+     */
+    public static final String HR_HIRE_DECISION = "hr.hire.decision";
+
+    /**
+     * HR 雇佣选择 prompt（从候选中选择 Character）
+     */
+    public static final String HR_HIRE_SELECT = "hr.hire.select";
+
+    /**
+     * HR 解雇决策 prompt
+     */
+    public static final String HR_FIRE_DECISION = "hr.fire.decision";
+
+    /**
+     * HR 生成职责描述 prompt
+     */
+    public static final String HR_DUTY_GENERATE = "hr.duty.generate";
+
+    // ==================== 选择模块 ====================
+
+    /**
+     * 通用选择 prompt
+     */
+    public static final String SELECTION_GENERIC = "selection.generic";
+
     // ==================== 便捷方法 ====================
 
     /**
@@ -85,5 +114,19 @@ public class PromptKeys {
      */
     public static boolean isOrganizationPrompt(String key) {
         return key != null && key.startsWith("org.");
+    }
+
+    /**
+     * 判断是否为 HR 相关的 prompt
+     */
+    public static boolean isHrPrompt(String key) {
+        return key != null && key.startsWith("hr.");
+    }
+
+    /**
+     * 判断是否为选择相关的 prompt
+     */
+    public static boolean isSelectionPrompt(String key) {
+        return key != null && key.startsWith("selection.");
     }
 }

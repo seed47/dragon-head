@@ -110,6 +110,30 @@ public class PromptManager {
     }
 
     /**
+     * 获取 Workspace 级别的 prompt
+     *
+     * @param workspace     工作空间ID
+     * @param promptKey     prompt键
+     * @param defaultValue  默认值
+     * @return prompt或默认值
+     */
+    public String getWorkspacePrompt(String workspace, String promptKey, String defaultValue) {
+        String value = getPrompt(workspace, null, null, promptKey);
+        return value != null ? value : defaultValue;
+    }
+
+    /**
+     * 获取 Workspace 级别的 prompt（无默认值）
+     *
+     * @param workspace     工作空间ID
+     * @param promptKey     prompt键
+     * @return prompt 或 null（未找到时）
+     */
+    public String getWorkspacePrompt(String workspace, String promptKey) {
+        return getPrompt(workspace, null, null, promptKey);
+    }
+
+    /**
      * 设置 Character在Organization下的 prompt (最高优先级)
      */
     public void setCharacterInOrgPrompt(String workspace, String organizationId, String characterId,
