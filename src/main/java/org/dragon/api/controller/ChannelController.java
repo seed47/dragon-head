@@ -1,11 +1,13 @@
 package org.dragon.api.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.dragon.channel.ChannelManager;
 import org.dragon.channel.entity.ChannelBinding;
 import org.dragon.channel.entity.ChannelConfig;
 import org.dragon.channel.service.ChannelBindingService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,41 +42,20 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ChannelController {
 
+    @Autowired
     private final ChannelBindingService channelBindingService;
+    @Autowired
     private final ChannelManager channelManager;
 
     // ==================== ChannelConfig（Bot 凭证）管理 ====================
-
-    /**
-     * 新增渠道 Bot 配置
-     * POST /api/channels/configs
-     *
-     * <p>Body 示例（飞书）：
-     * <pre>
-     * {
-     *   "id": "feishu-main-bot",
-     *   "channelType": "Feishu",
-     *   "name": "主飞书机器人",
-     *   "credentials": {
-     *     "appId": "cli_xxx",
-     *     "appSecret": "xxx",
-     *     "robotOpenId": "ou_xxx",
-     *     "wakeWord": "小助手"
-     *   }
-     * }
-     * </pre>
-     */
+    @Operation(summary = "新增Channel配置")
     @PostMapping("/configs")
     public ResponseEntity<ChannelConfig> createChannelConfig(@RequestBody ChannelConfig config) {
         ChannelConfig created = channelBindingService.createChannelConfig(config);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * 查询所有渠道 Bot 配置
-     * GET /api/channels/configs
-     * GET /api/channels/configs?channelType=Feishu
-     */
+    @Operation(summary = "查询所有Channel配置")
     @GetMapping("/configs")
     public ResponseEntity<List<ChannelConfig>> listChannelConfigs(
             @RequestParam(required = false) String channelType) {
@@ -82,10 +63,7 @@ public class ChannelController {
         return ResponseEntity.ok(configs);
     }
 
-    /**
-     * 查询指定渠道 Bot 配置
-     * GET /api/channels/configs/{configId}
-     */
+    @Operation(summary = "查询指定Channel配置")
     @GetMapping("/configs/{configId}")
     public ResponseEntity<ChannelConfig> getChannelConfig(@PathVariable String configId) {
         return channelBindingService.getChannelConfig(configId)
@@ -93,10 +71,7 @@ public class ChannelController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 更新渠道 Bot 配置（如修改 appSecret）
-     * PUT /api/channels/configs/{configId}
-     */
+    @Operation(summary = "更新Channel配置")
     @PutMapping("/configs/{configId}")
     public ResponseEntity<ChannelConfig> updateChannelConfig(
             @PathVariable String configId,
@@ -106,22 +81,14 @@ public class ChannelController {
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * 删除渠道 Bot 配置
-     * DELETE /api/channels/configs/{configId}
-     */
+    @Operation(summary = "删除Channel配置")
     @DeleteMapping("/configs/{configId}")
     public ResponseEntity<Void> deleteChannelConfig(@PathVariable String configId) {
         channelBindingService.deleteChannelConfig(configId);
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * 热重载渠道配置（修改凭证后立即生效，无需重启服务）
-     * POST /api/channels/configs/{configId}/reload
-     *
-     * <p>内部流程：stop 旧连接 → 应用新凭证 → start 新连接
-     */
+    @Operation(summary = "重新加载Channel配置")
     @PostMapping("/configs/{configId}/reload")
     public ResponseEntity<Void> reloadChannelConfig(@PathVariable String configId) {
         ChannelConfig config = channelBindingService.getChannelConfig(configId)
@@ -132,21 +99,7 @@ public class ChannelController {
 
     // ==================== ChannelBinding（会话 → Workspace 绑定）管理 ====================
 
-    /**
-     * 新增绑定关系：将 IM 会话绑定到指定 Workspace
-     * POST /api/channels/bindings
-     *
-     * <p>Body 示例：
-     * <pre>
-     * {
-     *   "channelName": "Feishu",
-     *   "chatId": "oc_a1b2c3d4",
-     *   "chatType": "group",
-     *   "workspaceId": "ws-dev-team",
-     *   "description": "研发团队飞书群"
-     * }
-     * </pre>
-     */
+    @Operation(summary = "新增Channel->Workspace的绑定关系")
     @PostMapping("/bindings")
     public ResponseEntity<ChannelBinding> createBinding(@RequestBody CreateBindingRequest body) {
         ChannelBinding binding = channelBindingService.createBinding(
@@ -158,12 +111,7 @@ public class ChannelController {
         return ResponseEntity.status(HttpStatus.CREATED).body(binding);
     }
 
-    /**
-     * 查询所有绑定关系
-     * GET /api/channels/bindings
-     * GET /api/channels/bindings?workspaceId=ws-001
-     * GET /api/channels/bindings?channelName=Feishu
-     */
+    @Operation(summary = "查询所有Channel->Workspace绑定关系")
     @GetMapping("/bindings")
     public ResponseEntity<List<ChannelBinding>> listBindings(
             @RequestParam(required = false) String workspaceId,
@@ -179,10 +127,7 @@ public class ChannelController {
         return ResponseEntity.ok(bindings);
     }
 
-    /**
-     * 查询指定绑定关系
-     * GET /api/channels/bindings/{channelName}/{chatId}
-     */
+    @Operation(summary = "更新绑定关系，根据Channel查询指定Workspace绑定关系")
     @GetMapping("/bindings/{channelName}/{chatId}")
     public ResponseEntity<ChannelBinding> getBinding(
             @PathVariable String channelName,
@@ -192,11 +137,7 @@ public class ChannelController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 改绑：将某个会话从原 Workspace 切换到新 Workspace
-     * PATCH /api/channels/bindings/{channelName}/{chatId}/workspace
-     * Body: { "workspaceId": "ws-new-team" }
-     */
+    @Operation(summary = "更新绑定关系")
     @PatchMapping("/bindings/{channelName}/{chatId}/workspace")
     public ResponseEntity<ChannelBinding> updateBindingWorkspace(
             @PathVariable String channelName,
@@ -210,11 +151,7 @@ public class ChannelController {
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * 启用/禁用绑定关系（禁用后该会话的消息走 Fallback 路径）
-     * PATCH /api/channels/bindings/{channelName}/{chatId}/status
-     * Body: { "enabled": false }
-     */
+    @Operation(summary = "启用/禁用绑定关系（禁用后该会话的消息走 Fallback 路径）")
     @PatchMapping("/bindings/{channelName}/{chatId}/status")
     public ResponseEntity<Void> setBindingEnabled(
             @PathVariable String channelName,
@@ -228,10 +165,7 @@ public class ChannelController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 删除绑定关系
-     * DELETE /api/channels/bindings/{channelName}/{chatId}
-     */
+    @Operation(summary = "删除绑定关系")
     @DeleteMapping("/bindings/{channelName}/{chatId}")
     public ResponseEntity<Void> deleteBinding(
             @PathVariable String channelName,
@@ -242,12 +176,7 @@ public class ChannelController {
 
     // ==================== 路由调试 ====================
 
-    /**
-     * 调试接口：查询 (channelName, chatId) 会路由到哪个 Workspace
-     * GET /api/channels/resolve?channelName=Feishu&chatId=oc_xxx
-     *
-     * <p>可在配置绑定后验证路由是否生效。
-     */
+    @Operation(summary = "调试接口：查询 (channelName, chatId) 会路由到哪个 Workspace")
     @GetMapping("/resolve")
     public ResponseEntity<Map<String, String>> resolveWorkspace(
             @RequestParam String channelName,
@@ -270,7 +199,6 @@ public class ChannelController {
     }
 
     // ==================== 请求体 DTO ====================
-
     @Data
     public static class CreateBindingRequest {
         /** 渠道名称，如 "Feishu" */

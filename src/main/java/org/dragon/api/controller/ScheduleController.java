@@ -1,4 +1,5 @@
 package org.dragon.api.controller;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.dragon.schedule.core.CronService;
 import org.dragon.schedule.entity.CronDefinition;
@@ -52,38 +53,14 @@ public class ScheduleController {
 
     // ==================== Cron 定义管理 ====================
 
-    /**
-     * 创建 Cron 任务
-     * POST /api/schedules/crons
-     *
-     * <p>Body 示例（每天 9 点触发 Observer 周期性评价）：
-     * <pre>
-     * {
-     *   "name": "每日 Observer 评价",
-     *   "description": "每天早上 9 点对所有活跃 Workspace 进行周期性评价",
-     *   "cronType": "CRON",
-     *   "cronExpression": "0 0 9 * * ?",
-     *   "timezone": "Asia/Shanghai",
-     *   "jobType": "SPRING_BEAN",
-     *   "jobHandler": "observerPeriodicEvaluationJob",
-     *   "jobData": { "observerId": "obs-global", "periodHours": 24 },
-     *   "misfirePolicy": "FIRE_ONCE",
-     *   "retryCount": 2,
-     *   "retryIntervalMs": 60000
-     * }
-     * </pre>
-     */
+    @Operation(summary = "创建Cron任务")
     @PostMapping("/crons")
     public ResponseEntity<String> createCron(@RequestBody CronDefinition definition) {
         String cronId = cronService.createCron(definition);
         return ResponseEntity.status(HttpStatus.CREATED).body(cronId);
     }
 
-    /**
-     * 查询所有 Cron 任务
-     * GET /api/schedules/crons
-     * GET /api/schedules/crons?status=ENABLED
-     */
+    @Operation(summary = "查询所有Cron任务")
     @GetMapping("/crons")
     public ResponseEntity<List<CronDefinition>> listCrons(
             @RequestParam(required = false) CronStatus status) {
@@ -93,10 +70,7 @@ public class ScheduleController {
         return ResponseEntity.ok(list);
     }
 
-    /**
-     * 查询指定 Cron 任务
-     * GET /api/schedules/crons/{cronId}
-     */
+    @Operation(summary = "查询指定Cron任务")
     @GetMapping("/crons/{cronId}")
     public ResponseEntity<CronDefinition> getCron(@PathVariable String cronId) {
         return cronService.getCron(cronId)
@@ -104,10 +78,7 @@ public class ScheduleController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 更新 Cron 任务（如修改表达式或 jobData）
-     * PUT /api/schedules/crons/{cronId}
-     */
+    @Operation(summary = "更新Cron任务（如修改表达式或 jobData）")
     @PutMapping("/crons/{cronId}")
     public ResponseEntity<Void> updateCron(
             @PathVariable String cronId,
@@ -117,10 +88,7 @@ public class ScheduleController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 删除 Cron 任务（同时从调度器取消注册）
-     * DELETE /api/schedules/crons/{cronId}
-     */
+    @Operation(summary = "删除Cron任务（同时从调度器取消注册）")
     @DeleteMapping("/crons/{cronId}")
     public ResponseEntity<Void> deleteCron(@PathVariable String cronId) {
         cronService.deleteCron(cronId);
@@ -129,32 +97,21 @@ public class ScheduleController {
 
     // ==================== 任务生命周期控制 ====================
 
-    /**
-     * 暂停 Cron 任务（ENABLED → PAUSED）
-     * POST /api/schedules/crons/{cronId}/pause
-     */
+    @Operation(summary = "暂停Cron任务（ENABLED → PAUSED）")
     @PostMapping("/crons/{cronId}/pause")
     public ResponseEntity<Void> pauseCron(@PathVariable String cronId) {
         cronService.pauseCron(cronId);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 恢复 Cron 任务（PAUSED → ENABLED）
-     * POST /api/schedules/crons/{cronId}/resume
-     */
+    @Operation(summary = "恢复Cron任务（PAUSED → ENABLED）")
     @PostMapping("/crons/{cronId}/resume")
     public ResponseEntity<Void> resumeCron(@PathVariable String cronId) {
         cronService.resumeCron(cronId);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 立即触发一次执行（不影响原有调度周期）
-     * POST /api/schedules/crons/{cronId}/trigger
-     *
-     * <p>适用场景：调试时手动触发、补偿错过的执行。
-     */
+    @Operation(summary = "立即触发一次执行（不影响原有调度周期）")
     @PostMapping("/crons/{cronId}/trigger")
     public ResponseEntity<Void> triggerNow(@PathVariable String cronId) {
         cronService.triggerNow(cronId);
@@ -163,10 +120,7 @@ public class ScheduleController {
 
     // ==================== 执行历史查询 ====================
 
-    /**
-     * 查询指定 Cron 任务的执行历史
-     * GET /api/schedules/crons/{cronId}/history?limit=20
-     */
+    @Operation(summary = "查询指定 Cron 任务的执行历史")
     @GetMapping("/crons/{cronId}/history")
     public ResponseEntity<List<ExecutionHistory>> getExecutionHistory(
             @PathVariable String cronId,
@@ -175,21 +129,13 @@ public class ScheduleController {
         return ResponseEntity.ok(history);
     }
 
-    /**
-     * 查询当前正在运行的所有任务
-     * GET /api/schedules/executions/running
-     *
-     * <p>用于监控大盘，快速发现长时间占用的任务。
-     */
+    @Operation(summary = "查询当前正在运行的所有任务")
     @GetMapping("/executions/running")
     public ResponseEntity<List<ExecutionHistory>> getRunningJobs() {
         return ResponseEntity.ok(executionHistoryStore.findRunningJobs());
     }
 
-    /**
-     * 按执行状态查询历史记录
-     * GET /api/schedules/executions?status=FAILED&limit=50
-     */
+    @Operation(summary = "按执行状态查询历史记录")
     @GetMapping("/executions")
     public ResponseEntity<List<ExecutionHistory>> getExecutionsByStatus(
             @RequestParam ExecutionStatus status,
@@ -197,22 +143,14 @@ public class ScheduleController {
         return ResponseEntity.ok(executionHistoryStore.findByStatus(status, limit));
     }
 
-    /**
-     * 查询指定执行记录详情（含错误堆栈、结果数据）
-     * GET /api/schedules/executions/{executionId}
-     */
+    @Operation(summary = "查询指定执行记录详情（含错误堆栈、结果数据）")
     @GetMapping("/executions/{executionId}")
     public ResponseEntity<ExecutionHistory> getExecution(@PathVariable String executionId) {
         Optional<ExecutionHistory> history = executionHistoryStore.findByExecutionId(executionId);
         return history.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 清理指定时间点之前的历史记录（运维接口）
-     * DELETE /api/schedules/executions?beforeTime=1700000000000
-     *
-     * @param beforeTime 时间戳（毫秒）
-     */
+    @Operation(summary = "清理指定时间点之前的历史记录（运维接口）")
     @DeleteMapping("/executions")
     public ResponseEntity<Integer> cleanupHistory(@RequestParam long beforeTime) {
         int deleted = executionHistoryStore.deleteBefore(beforeTime);
