@@ -11,7 +11,7 @@ import org.dragon.character.CharacterRegistry;
 import org.dragon.character.mind.Mind;
 import org.dragon.character.mind.PersonalityDescriptor;
 import org.dragon.character.mind.tag.Tag;
-import org.dragon.observer.commons.CommonSenseValidator;
+import org.dragon.workspace.commons.CommonSenseValidator;
 import org.dragon.observer.evaluation.EvaluationRecord;
 import org.dragon.observer.evaluation.EvaluationRecordStore;
 import org.dragon.observer.log.ModificationLog;

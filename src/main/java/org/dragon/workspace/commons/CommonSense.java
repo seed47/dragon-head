@@ -1,6 +1,7 @@
-package org.dragon.observer.commons;
+package org.dragon.workspace.commons;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,8 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * CommonSense 常识实体
- * 存储不可变更的规则和约束，作为所有 Organization 和 Character 行为的上限准则
+ * CommonSense 常识实体 (Workspace 版本)
+ * 存储 Workspace 级别的常识规则，支持转换成 prompt
  *
  * @author wyj
  * @version 1.0
@@ -42,9 +43,29 @@ public class CommonSense {
     }
 
     /**
+     * Prompt 更新来源
+     */
+    public enum UpdateSource {
+        AUTO,      // 自动更新 (commonsense 内容变化触发)
+        MANUAL,    // 手动触发
+        SCHEDULED  // 定时任务
+    }
+
+    /**
      * 常识唯一标识
      */
     private String id;
+
+    /**
+     * 工作空间 ID
+     */
+    private String workspaceId;
+
+    /**
+     * 文件夹 ID
+     * 可选，关联到文件夹
+     */
+    private String folderId;
 
     /**
      * 常识名称
@@ -83,6 +104,32 @@ public class CommonSense {
      */
     @Builder.Default
     private boolean enabled = true;
+
+    /**
+     * 转换成 prompt 的模板
+     * 支持变量替换，如: ${name}, ${rule}
+     */
+    private String promptTemplate;
+
+    /**
+     * 模板变量
+     */
+    private Map<String, Object> promptVariables;
+
+    /**
+     * 缓存的 prompt
+     */
+    private String cachedPrompt;
+
+    /**
+     * 上次 prompt 更新时间
+     */
+    private LocalDateTime lastPromptUpdateAt;
+
+    /**
+     * Prompt 更新来源
+     */
+    private UpdateSource promptUpdateSource;
 
     /**
      * 创建时间

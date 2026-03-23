@@ -1,12 +1,15 @@
-package org.dragon.observer.commons;
+package org.dragon.workspace.commons;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.dragon.workspace.commons.store.WorkspaceCommonSenseStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * CommonSense 常识校验器
@@ -16,15 +19,14 @@ import org.springframework.stereotype.Component;
  * @version 1.0
  */
 @Component
+@RequiredArgsConstructor
 public class CommonSenseValidator {
 
     private static final Logger log = LoggerFactory.getLogger(CommonSenseValidator.class);
 
-    private final CommonSenseStore commonSenseStore;
+    private static final String GLOBAL_WORKSPACE_ID = "_global";
 
-    public CommonSenseValidator(CommonSenseStore commonSenseStore) {
-        this.commonSenseStore = commonSenseStore;
-    }
+    private final WorkspaceCommonSenseStore commonSenseStore;
 
     /**
      * 校验结果
@@ -91,7 +93,7 @@ public class CommonSenseValidator {
     /**
      * 校验优化动作
      *
-     * @param actionTargetType 目标类型 (CHARACTER 或 ORGANIZATION)
+     * @param actionTargetType 目标类型 (CHARACTER 或 WORKSPACE)
      * @param actionType       动作类型
      * @param parameters       修改参数
      * @return 校验结果
@@ -100,7 +102,7 @@ public class CommonSenseValidator {
         List<Violation> violations = new ArrayList<>();
 
         // 获取所有启用的常识
-        List<CommonSense> enabledCommonSense = commonSenseStore.findEnabled();
+        List<CommonSense> enabledCommonSense = getEnabledCommonSense();
 
         for (CommonSense cs : enabledCommonSense) {
             Violation violation = checkViolation(cs, parameters);
@@ -118,6 +120,13 @@ public class CommonSenseValidator {
             return ValidationResult.success();
         }
         return ValidationResult.failure(violations);
+    }
+
+    /**
+     * 获取全局工作空间的启用的常识列表
+     */
+    private List<CommonSense> getEnabledCommonSense() {
+        return commonSenseStore.findEnabled(GLOBAL_WORKSPACE_ID);
     }
 
     /**

@@ -5,8 +5,8 @@ import java.util.List;
 
 import org.dragon.character.CharacterRegistry;
 import org.dragon.observer.collector.DataCollector;
-import org.dragon.observer.commons.CommonSenseStore;
-import org.dragon.observer.commons.CommonSenseValidator;
+import org.dragon.workspace.commons.CommonSenseValidator;
+import org.dragon.workspace.commons.store.WorkspaceCommonSenseStore;
 import org.dragon.observer.evaluation.EvaluationEngine;
 import org.dragon.observer.evaluation.EvaluationRecord;
 import org.dragon.observer.evaluation.EvaluationRecordStore;
@@ -39,7 +39,7 @@ public class ObserverService {
     private final EvaluationEngine evaluationEngine;
     private final OptimizationExecutor optimizationExecutor;
     private final CommonSenseValidator commonSenseValidator;
-    private final CommonSenseStore commonSenseStore;
+    private final WorkspaceCommonSenseStore commonSenseStore;
     private final CharacterRegistry characterRegistry;
 
     /**
@@ -282,7 +282,8 @@ public class ObserverService {
         stats.setTotalEvaluations(evaluationRecordStore.count());
         stats.setTotalOptimizations(optimizationActionStore.count());
         stats.setPendingOptimizations(optimizationActionStore.findPending().size());
-        stats.setCommonSenseCount(commonSenseStore.count());
+        stats.setCommonSenseCount(commonSenseStore.countByWorkspace(
+                org.dragon.workspace.commons.store.MemoryWorkspaceCommonSenseStore.GLOBAL_WORKSPACE_ID));
         stats.setCharacterCount(characterRegistry.size());
 
         return stats;
