@@ -9,6 +9,12 @@ import java.util.stream.Collectors;
 
 import org.dragon.workspace.commons.CommonSense;
 import org.dragon.workspace.commons.CommonSenseFolder;
+import org.dragon.workspace.commons.content.CommonSenseContent;
+import org.dragon.workspace.commons.content.CommonSenseContentParser;
+import org.dragon.workspace.commons.content.ContentType;
+import org.dragon.workspace.commons.content.ConstraintContent;
+import org.dragon.workspace.commons.content.ForbiddenContent;
+import org.dragon.workspace.commons.content.TemplateContent;
 import org.springframework.stereotype.Component;
 
 /**
@@ -49,15 +55,22 @@ public class MemoryWorkspaceCommonSenseStore implements WorkspaceCommonSenseStor
      */
     private void initDefaultCommonSense() {
         LocalDateTime now = LocalDateTime.now();
+        CommonSenseContentParser parser = new CommonSenseContentParser();
 
-        // 隐私保护类
+        // 隐私保护类 - FORBIDDEN 类型
         save(CommonSense.builder()
                 .id("cs-privacy-001")
                 .workspaceId(GLOBAL_WORKSPACE_ID)
                 .name("用户隐私保护")
                 .description("不得泄露用户隐私信息，包括但不限于姓名、联系方式、地址等")
                 .category(CommonSense.Category.PRIVACY)
-                .rule("{\"forbidden\": [\"泄露用户个人信息\", \"未经授权访问用户数据\"]}")
+                .content(parser.serialize(CommonSenseContent.builder()
+                        .type(ContentType.FORBIDDEN)
+                        .data(ForbiddenContent.builder()
+                                .items(List.of("泄露用户个人信息", "未经授权访问用户数据"))
+                                .reason("隐私保护")
+                                .build())
+                        .build()))
                 .severity(CommonSense.Severity.CRITICAL)
                 .enabled(true)
                 .version(1)
@@ -66,14 +79,22 @@ public class MemoryWorkspaceCommonSenseStore implements WorkspaceCommonSenseStor
                 .createdBy("system")
                 .build());
 
-        // 安全合规类
+        // 安全合规类 - CONSTRAINT 类型
         save(CommonSense.builder()
                 .id("cs-safety-001")
                 .workspaceId(GLOBAL_WORKSPACE_ID)
                 .name("法律法规遵守")
                 .description("所有任务必须遵循当地法律法规和道德规范")
                 .category(CommonSense.Category.SAFETY)
-                .rule("{\"constraint\": [\"合法合规\", \"道德规范\"]}")
+                .content(parser.serialize(CommonSenseContent.builder()
+                        .type(ContentType.CONSTRAINT)
+                        .data(ConstraintContent.builder()
+                                .constraints(List.of(
+                                        ConstraintContent.Constraint.builder().key("合法合规").value(true).build(),
+                                        ConstraintContent.Constraint.builder().key("道德规范").value(true).build()
+                                ))
+                                .build())
+                        .build()))
                 .severity(CommonSense.Severity.CRITICAL)
                 .enabled(true)
                 .version(1)
@@ -82,14 +103,25 @@ public class MemoryWorkspaceCommonSenseStore implements WorkspaceCommonSenseStor
                 .createdBy("system")
                 .build());
 
-        // 性能约束类
+        // 性能约束类 - CONSTRAINT 类型
         save(CommonSense.builder()
                 .id("cs-performance-001")
                 .workspaceId(GLOBAL_WORKSPACE_ID)
                 .name("响应时间限制")
                 .description("系统响应时间不得超过 30 秒")
                 .category(CommonSense.Category.PERFORMANCE)
-                .rule("{\"maxResponseTime\": 30000}")
+                .content(parser.serialize(CommonSenseContent.builder()
+                        .type(ContentType.CONSTRAINT)
+                        .data(ConstraintContent.builder()
+                                .constraints(List.of(
+                                        ConstraintContent.Constraint.builder()
+                                                .key("maxResponseTime")
+                                                .value(30000)
+                                                .unit("ms")
+                                                .build()
+                                ))
+                                .build())
+                        .build()))
                 .severity(CommonSense.Severity.HIGH)
                 .enabled(true)
                 .version(1)
@@ -98,14 +130,20 @@ public class MemoryWorkspaceCommonSenseStore implements WorkspaceCommonSenseStor
                 .createdBy("system")
                 .build());
 
-        // 业务规则类
+        // 业务规则类 - FORBIDDEN 类型
         save(CommonSense.builder()
                 .id("cs-business-001")
                 .workspaceId(GLOBAL_WORKSPACE_ID)
                 .name("数据持久化要求")
                 .description("核心业务数据必须持久化存储")
                 .category(CommonSense.Category.BUSINESS)
-                .rule("{\"mustPersist\": [\"核心业务数据\", \"用户生成内容\"]}")
+                .content(parser.serialize(CommonSenseContent.builder()
+                        .type(ContentType.FORBIDDEN)
+                        .data(ForbiddenContent.builder()
+                                .items(List.of("核心业务数据", "用户生成内容"))
+                                .reason("数据持久化要求")
+                                .build())
+                        .build()))
                 .severity(CommonSense.Severity.HIGH)
                 .enabled(true)
                 .version(1)
@@ -114,14 +152,17 @@ public class MemoryWorkspaceCommonSenseStore implements WorkspaceCommonSenseStor
                 .createdBy("system")
                 .build());
 
-        // 系统约束类
+        // 系统约束类 - SIMPLE 类型
         save(CommonSense.builder()
                 .id("cs-system-001")
                 .workspaceId(GLOBAL_WORKSPACE_ID)
                 .name("资源使用限制")
                 .description("单次任务 token 消耗不得超过 100000")
                 .category(CommonSense.Category.SYSTEM)
-                .rule("{\"maxTokens\": 100000}")
+                .content(parser.serialize(CommonSenseContent.builder()
+                        .type(ContentType.SIMPLE)
+                        .data(Map.of("maxTokens", 100000))
+                        .build()))
                 .severity(CommonSense.Severity.MEDIUM)
                 .enabled(true)
                 .version(1)

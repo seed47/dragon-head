@@ -9,7 +9,10 @@ import java.util.stream.Collectors;
 
 import org.dragon.agent.llm.util.CharacterCaller;
 import org.dragon.character.Character;
+import org.dragon.config.PromptManager;
 import org.dragon.workspace.built_ins.character.commonsense_writer.CommonSenseWriterCharacterFactory;
+import org.dragon.workspace.commons.content.CommonSenseContent;
+import org.dragon.workspace.commons.content.CommonSenseContentParser;
 import org.dragon.workspace.commons.store.WorkspaceCommonSenseStore;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +33,8 @@ public class CommonSenseService {
     private final WorkspaceCommonSenseStore store;
     private final CommonSenseWriterCharacterFactory commonSenseWriterCharacterFactory;
     private final CharacterCaller characterCaller;
+    private final PromptManager promptManager;
+    private final CommonSenseContentParser contentParser;
 
     /**
      * Prompt 缓存
@@ -39,10 +44,14 @@ public class CommonSenseService {
 
     public CommonSenseService(WorkspaceCommonSenseStore store,
                               CommonSenseWriterCharacterFactory commonSenseWriterCharacterFactory,
-                              CharacterCaller characterCaller) {
+                              CharacterCaller characterCaller,
+                              PromptManager promptManager,
+                              CommonSenseContentParser contentParser) {
         this.store = store;
         this.commonSenseWriterCharacterFactory = commonSenseWriterCharacterFactory;
         this.characterCaller = characterCaller;
+        this.promptManager = promptManager;
+        this.contentParser = contentParser;
     }
 
     // ==================== 文件夹管理 ====================
@@ -254,32 +263,47 @@ public class CommonSenseService {
 
     /**
      * 构建给 CommonSenseWriter Character 的输入
+     * 模板从 PromptManager 读取，支持按 workspace 配置
      */
     private String buildCommonSenseWriterInput(String workspaceId, List<CommonSense> commonSenses) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("请根据以下常识信息，生成适合的 prompt。\n\n");
-        sb.append("## 工作空间 ID\n").append(workspaceId).append("\n\n");
-        sb.append("## 常识列表\n");
+        // 从 PromptManager 读取模板，默认值使用原有硬编码内容
+        String template = promptManager.getWorkspacePrompt(
+                workspaceId,
+                "commonsense_writer.input_template",
+                "请根据以下常识信息，生成适合的 prompt。\n\n" +
+                        "## 工作空间 ID\n{workspaceId}\n\n" +
+                        "## 常识列表\n{commonSenses}\n\n" +
+                        "请生成一个结构化的 prompt，包含所有常识信息。"
+        );
 
+        // 组装 commonSenses 部分
+        StringBuilder csPart = new StringBuilder();
         for (CommonSense cs : commonSenses) {
-            sb.append("- 名称: ").append(cs.getName()).append("\n");
-            sb.append("  类别: ").append(cs.getCategory()).append("\n");
-            sb.append("  严重程度: ").append(cs.getSeverity()).append("\n");
+            csPart.append("- 名称: ").append(cs.getName()).append("\n");
+            csPart.append("  类别: ").append(cs.getCategory()).append("\n");
+            csPart.append("  严重程度: ").append(cs.getSeverity()).append("\n");
             if (cs.getDescription() != null && !cs.getDescription().isEmpty()) {
-                sb.append("  描述: ").append(cs.getDescription()).append("\n");
+                csPart.append("  描述: ").append(cs.getDescription()).append("\n");
             }
-            if (cs.getRule() != null && !cs.getRule().isEmpty()) {
-                sb.append("  规则: ").append(cs.getRule()).append("\n");
+            // 优先使用新的 content 字段
+            if (cs.getContent() != null && !cs.getContent().isEmpty()) {
+                csPart.append("  内容: ").append(cs.getContent()).append("\n");
+            } else {
+                // 向后兼容旧字段
+                if (cs.getRule() != null && !cs.getRule().isEmpty()) {
+                    csPart.append("  规则: ").append(cs.getRule()).append("\n");
+                }
+                if (cs.getPromptTemplate() != null && !cs.getPromptTemplate().isEmpty()) {
+                    csPart.append("  模板: ").append(cs.getPromptTemplate()).append("\n");
+                }
             }
-            if (cs.getPromptTemplate() != null && !cs.getPromptTemplate().isEmpty()) {
-                sb.append("  模板: ").append(cs.getPromptTemplate()).append("\n");
-            }
-            sb.append("\n");
+            csPart.append("\n");
         }
 
-        sb.append("\n请生成一个结构化的 prompt，包含所有常识信息。");
-
-        return sb.toString();
+        // 替换模板占位符
+        return template
+                .replace("{workspaceId}", workspaceId)
+                .replace("{commonSenses}", csPart.toString());
     }
 
     /**
@@ -326,9 +350,17 @@ public class CommonSenseService {
             sb.append(commonSense.getDescription()).append("\n");
         }
 
-        // 使用 promptTemplate 或 fallback 到 rule
+        // 优先使用新的 content 字段
         String content;
-        if (commonSense.getPromptTemplate() != null && !commonSense.getPromptTemplate().isEmpty()) {
+        if (commonSense.getContent() != null && !commonSense.getContent().isEmpty()) {
+            CommonSenseContent parsed = contentParser.parse(commonSense.getContent());
+            if (parsed != null) {
+                content = contentParser.toPromptText(parsed);
+            } else {
+                content = "";
+            }
+        } else if (commonSense.getPromptTemplate() != null && !commonSense.getPromptTemplate().isEmpty()) {
+            // 向后兼容旧字段
             content = resolveTemplate(commonSense.getPromptTemplate(), commonSense.getPromptVariables());
         } else if (commonSense.getRule() != null && !commonSense.getRule().isEmpty()) {
             content = commonSense.getRule();

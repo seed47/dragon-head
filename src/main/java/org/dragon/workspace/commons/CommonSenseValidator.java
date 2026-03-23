@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.dragon.workspace.commons.content.CommonSenseContent;
+import org.dragon.workspace.commons.content.CommonSenseContentParser;
+import org.dragon.workspace.commons.content.ConstraintContent;
 import org.dragon.workspace.commons.store.WorkspaceCommonSenseStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +30,7 @@ public class CommonSenseValidator {
     private static final String GLOBAL_WORKSPACE_ID = "_global";
 
     private final WorkspaceCommonSenseStore commonSenseStore;
+    private final CommonSenseContentParser contentParser;
 
     /**
      * 校验结果
@@ -159,6 +163,12 @@ public class CommonSenseValidator {
             return null;
         }
 
+        // 优先使用新的 content 字段
+        if (cs.getContent() != null && !cs.getContent().isEmpty()) {
+            return checkContentViolation(cs, parameters);
+        }
+
+        // 向后兼容旧 rule 字段
         String rule = cs.getRule();
         if (rule == null || rule.isEmpty()) {
             return null;
@@ -177,6 +187,97 @@ public class CommonSenseValidator {
             default:
                 return null;
         }
+    }
+
+    /**
+     * 基于 content 字段检查违规
+     */
+    private Violation checkContentViolation(CommonSense cs, Map<String, Object> parameters) {
+        CommonSenseContent content = contentParser.parse(cs.getContent());
+        if (content == null) {
+            return null;
+        }
+
+        switch (cs.getCategory()) {
+            case PRIVACY:
+                return checkPrivacyViolation(cs, parameters);
+            case PERFORMANCE:
+                return checkPerformanceContentViolation(cs, content, parameters);
+            case BUSINESS:
+                return checkBusinessViolation(cs, parameters);
+            case SYSTEM:
+                return checkSystemContentViolation(cs, content, parameters);
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 基于 content 检查性能违规
+     */
+    private Violation checkPerformanceContentViolation(CommonSense cs, CommonSenseContent content, Map<String, Object> parameters) {
+        try {
+            Object data = content.getData();
+            if (data == null) {
+                return null;
+            }
+            String json = new com.google.gson.Gson().toJson(data);
+            ConstraintContent cc = new com.google.gson.Gson().fromJson(json, ConstraintContent.class);
+
+            if (cc != null && cc.getConstraints() != null) {
+                for (ConstraintContent.Constraint c : cc.getConstraints()) {
+                    if ("maxResponseTime".equals(c.getKey())) {
+                        int maxValue = ((Number) c.getValue()).intValue();
+                        Object actualValue = parameters.get("responseTime");
+                        if (actualValue != null) {
+                            int actual = Integer.parseInt(actualValue.toString());
+                            if (actual > maxValue) {
+                                return new Violation(cs.getId(), cs.getName(),
+                                        String.format("响应时间 %dms 超过限制 %dms", actual, maxValue),
+                                        cs.getSeverity());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[CommonSenseValidator] Failed to check performance content: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 基于 content 检查系统违规
+     */
+    private Violation checkSystemContentViolation(CommonSense cs, CommonSenseContent content, Map<String, Object> parameters) {
+        try {
+            Object data = content.getData();
+            if (data == null) {
+                return null;
+            }
+            String json = new com.google.gson.Gson().toJson(data);
+            ConstraintContent cc = new com.google.gson.Gson().fromJson(json, ConstraintContent.class);
+
+            if (cc != null && cc.getConstraints() != null) {
+                for (ConstraintContent.Constraint c : cc.getConstraints()) {
+                    if ("maxTokens".equals(c.getKey())) {
+                        int maxValue = ((Number) c.getValue()).intValue();
+                        Object tokens = parameters.get("tokens");
+                        if (tokens != null) {
+                            int actualTokens = Integer.parseInt(tokens.toString());
+                            if (actualTokens > maxValue) {
+                                return new Violation(cs.getId(), cs.getName(),
+                                        String.format("Token 消耗 %d 超过限制 %d", actualTokens, maxValue),
+                                        cs.getSeverity());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[CommonSenseValidator] Failed to check system content: {}", e.getMessage());
+        }
+        return null;
     }
 
     /**

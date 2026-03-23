@@ -117,6 +117,12 @@ public class CommonSense {
     private Map<String, Object> promptVariables;
 
     /**
+     * JSON 内容字段
+     * 存储结构化的规则内容，取代 rule/promptTemplate/promptVariables
+     */
+    private String content;
+
+    /**
      * 缓存的 prompt
      */
     private String cachedPrompt;
