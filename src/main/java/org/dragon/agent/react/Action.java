@@ -40,6 +40,11 @@ public class Action {
     private String modelId;
 
     /**
+     * 响应内容 (用于 FINISH/RESPOND 类型)
+     */
+    private String response;
+
+    /**
      * 动作类型枚举
      */
     public enum ActionType {

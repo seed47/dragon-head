@@ -8,8 +8,10 @@ import org.dragon.task.Task;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * ReAct 执行上下文
@@ -124,6 +126,12 @@ public class ReActContext {
     private String errorMessage;
 
     /**
+     * 允许使用的工具名称集合
+     */
+    @Builder.Default
+    private Set<String> allowedTools = new HashSet<>();
+
+    /**
      * 获取当前模型 ID
      *
      * @return 模型 ID
@@ -185,5 +193,15 @@ public class ReActContext {
      */
     public int incrementIteration() {
         return ++currentIteration;
+    }
+
+    /**
+     * 检查工具是否允许使用
+     *
+     * @param toolName 工具名称
+     * @return 是否允许
+     */
+    public boolean isToolAllowed(String toolName) {
+        return allowedTools == null || allowedTools.isEmpty() || allowedTools.contains(toolName);
     }
 }

@@ -1,8 +1,10 @@
 package org.dragon.character;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.dragon.agent.model.ModelRegistry;
@@ -128,6 +130,12 @@ public class Character {
      * 扩展属性
      */
     private Map<String, Object> extensions;
+
+    /**
+     * 当前 Character 允许使用的工具名称集合
+     */
+    @Builder.Default
+    private Set<String> allowedTools = new HashSet<>();
 
     /**
      * 创建时间
@@ -302,6 +310,7 @@ public class Character {
                 .systemPrompt(systemPrompt)
                 .maxIterations(maxIterations)
                 .streamingEnabled(false)
+                .allowedTools(this.allowedTools)
                 .build();
 
         return reActExecutor.execute(context);
@@ -358,6 +367,7 @@ public class Character {
                 .maxIterations(maxIterations)
                 .streamingEnabled(streaming)
                 .task(task)
+                .allowedTools(this.allowedTools)
                 .build();
 
         return reActExecutor.execute(context);

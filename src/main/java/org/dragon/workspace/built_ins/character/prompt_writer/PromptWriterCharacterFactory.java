@@ -1,7 +1,9 @@
 package org.dragon.workspace.built_ins.character.prompt_writer;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.dragon.agent.tool.ToolConnector;
@@ -9,6 +11,7 @@ import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.Character;
 import org.dragon.character.CharacterFactory;
 import org.dragon.character.CharacterRegistry;
+import org.dragon.config.PromptManager;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +38,7 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
     private final WorkspaceRegistry workspaceRegistry;
     private final ToolRegistry toolRegistry;
     private final PromptWriterCharacterTools promptWriterCharacterTools;
+    private final PromptManager promptManager;
 
     @Override
     public String getCharacterType() {
@@ -49,6 +53,15 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
         workspaceRegistry.get(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
 
+        // 获取可用工具列表并提取工具名称
+        List<ToolConnector> availableTools = getAvailableTools();
+        Set<String> allowedToolNames = new HashSet<>();
+        for (ToolConnector tool : availableTools) {
+            if (tool != null && tool.getName() != null) {
+                allowedToolNames.add(tool.getName());
+            }
+        }
+
         // 创建 PromptWriter Character
         Character character = Character.builder()
                 .id(characterId)
@@ -58,6 +71,7 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
                 .workspaceIds(List.of(workspaceId))
                 .version(1)
                 .extensions(new ConcurrentHashMap<>())
+                .allowedTools(allowedToolNames)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -65,7 +79,20 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
         // 注册到 CharacterRegistry
         characterRegistry.register(character);
 
-        log.info("[PromptWriterCharacterFactory] Created PromptWriter character {} for workspace {}", characterId, workspaceId);
+        // // 写入默认 system prompt（如果不存在）
+        // String existingPrompt = promptManager.getPrompt(workspaceId, characterId, PromptKeys.CHARACTER_SYSTEM);
+        // if (existingPrompt == null || existingPrompt.isEmpty()) {
+        //     promptManager.setCharacterPrompt(workspaceId, characterId, PromptKeys.CHARACTER_SYSTEM,
+        //             "你是一个专业的 Prompt Writer，负责将任务信息、成员信息和模板拼接成完整的 prompt。\n" +
+        //             "1. 先判断当前任务是否需要工作空间规则、术语、角色边界、协作约束\n" +
+        //             "2. 需要时调用 get_workspace_common_sense 工具获取 CommonSense\n" +
+        //             "3. 不需要时直接生成完整 prompt\n" +
+        //             "4. 最终只返回完整 prompt，不要解释，不要包含 ReAct 思考过程");
+        //     log.info("[PromptWriterCharacterFactory] Set default system prompt for character {}", characterId);
+        // }
+
+        log.info("[PromptWriterCharacterFactory] Created PromptWriter character {} for workspace {} with tools: {}",
+                characterId, workspaceId, allowedToolNames);
 
         return character;
     }

@@ -1,7 +1,11 @@
 package org.dragon.workspace.service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.dragon.agent.llm.util.CharacterCaller;
@@ -9,8 +13,8 @@ import org.dragon.character.Character;
 import org.dragon.config.PromptKeys;
 import org.dragon.config.PromptManager;
 import org.dragon.task.Task;
-import org.dragon.task.TaskStore;
 import org.dragon.task.TaskStatus;
+import org.dragon.task.TaskStore;
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.dragon.workspace.built_ins.character.member_selector.MemberSelectorCharacterFactory;
@@ -19,7 +23,10 @@ import org.dragon.workspace.built_ins.character.prompt_writer.PromptWriterCharac
 import org.dragon.workspace.chat.ChatRoom;
 import org.dragon.workspace.chat.ChatSession;
 import org.dragon.workspace.member.WorkspaceMember;
+import org.dragon.workspace.service.dto.PromptWriterInput;
 import org.springframework.stereotype.Service;
+
+import com.google.gson.Gson;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +54,7 @@ public class WorkspaceTaskArrangementService {
     private final ProjectManagerCharacterFactory projectManagerCharacterFactory;
     private final PromptWriterCharacterFactory promptWriterCharacterFactory;
     private final TaskStore taskStore;
+    private final Gson gson = new Gson();
 
     /**
      * 任务执行模式枚举
@@ -278,36 +286,39 @@ public class WorkspaceTaskArrangementService {
 
     /**
      * 构建给 PromptWriter Character 的输入
-     * 格式：任务类型|模板内容|动态数据
      *
      * @param promptType prompt 类型
      * @param promptTemplate prompt 模板
      * @param task 任务信息
      * @param members 成员列表
-     * @return 给 PromptWriter 的输入
+     * @return 给 PromptWriter 的 JSON 格式输入
      */
     private String buildPromptWriterInput(String promptType, String promptTemplate, Task task,
             List<WorkspaceMember> members) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("请根据以下信息组装完整的 prompt。\n\n");
-        sb.append("## Prompt 类型\n").append(promptType).append("\n\n");
-        sb.append("## Prompt 模板\n").append(promptTemplate).append("\n\n");
-        sb.append("## 任务信息\n");
-        sb.append("任务ID: ").append(task.getId()).append("\n");
-        sb.append("任务名称: ").append(task.getName()).append("\n");
-        sb.append("任务描述: ").append(task.getDescription()).append("\n");
-        sb.append("任务输入: ").append(task.getInput()).append("\n\n");
-        sb.append("## 成员列表\n");
-        for (WorkspaceMember member : members) {
-            sb.append("- ID: ").append(member.getCharacterId())
-                    .append(", 角色: ").append(member.getRole())
-                    .append(", 层级: ").append(member.getLayer()).append("\n");
-        }
-        if (task.getWorkspaceId() != null) {
-            sb.append("\n## 工作空间信息\n");
-            sb.append("工作空间ID: ").append(task.getWorkspaceId()).append("\n");
-        }
-        return sb.toString();
+        List<PromptWriterInput.MemberInfo> memberInfos = members.stream()
+                .map(m -> PromptWriterInput.MemberInfo.builder()
+                        .characterId(m.getCharacterId())
+                        .role(m.getRole())
+                        .layer(m.getLayer() != null ? m.getLayer().toString() : null)
+                        .build())
+                .toList();
+
+        PromptWriterInput input = PromptWriterInput.builder()
+                .workspaceId(task.getWorkspaceId())
+                .promptType(promptType)
+                .promptTemplate(promptTemplate)
+                .task(PromptWriterInput.TaskInfo.builder()
+                        .id(task.getId())
+                        .name(task.getName())
+                        .description(task.getDescription())
+                        .input(task.getInput())
+                        .parentTaskId(task.getParentTaskId())
+                        .build())
+                .members(memberInfos)
+                .contextHints(Map.of("timestamp", LocalDateTime.now().toString()))
+                .build();
+
+        return gson.toJson(input);
     }
 
     /**
@@ -343,55 +354,55 @@ public class WorkspaceTaskArrangementService {
                 .build());
     }
 
-    /**
-     * 构建成员选择 prompt
-     *
-     * @deprecated 请使用 PromptWriter Character 代替
-     */
-    @Deprecated
-    private String buildMemberSelectionPrompt(Task task, List<WorkspaceMember> members,
-            String systemPrompt) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(systemPrompt).append("\n\n");
-        sb.append("## 任务信息\n");
-        sb.append("任务ID: ").append(task.getId()).append("\n");
-        sb.append("任务名称: ").append(task.getName()).append("\n");
-        sb.append("任务描述: ").append(task.getDescription()).append("\n");
-        sb.append("任务输入: ").append(task.getInput()).append("\n\n");
-        sb.append("## 候选成员列表\n");
-        for (WorkspaceMember member : members) {
-            sb.append("- ID: ").append(member.getCharacterId())
-                    .append(", 角色: ").append(member.getRole())
-                    .append(", 层级: ").append(member.getLayer()).append("\n");
-        }
-        return sb.toString();
-    }
+    // /**
+    //  * 构建成员选择 prompt
+    //  *
+    //  * @deprecated 请使用 PromptWriter Character 代替
+    //  */
+    // @Deprecated
+    // private String buildMemberSelectionPrompt(Task task, List<WorkspaceMember> members,
+    //         String systemPrompt) {
+    //     StringBuilder sb = new StringBuilder();
+    //     sb.append(systemPrompt).append("\n\n");
+    //     sb.append("## 任务信息\n");
+    //     sb.append("任务ID: ").append(task.getId()).append("\n");
+    //     sb.append("任务名称: ").append(task.getName()).append("\n");
+    //     sb.append("任务描述: ").append(task.getDescription()).append("\n");
+    //     sb.append("任务输入: ").append(task.getInput()).append("\n\n");
+    //     sb.append("## 候选成员列表\n");
+    //     for (WorkspaceMember member : members) {
+    //         sb.append("- ID: ").append(member.getCharacterId())
+    //                 .append(", 角色: ").append(member.getRole())
+    //                 .append(", 层级: ").append(member.getLayer()).append("\n");
+    //     }
+    //     return sb.toString();
+    // }
 
-    /**
-     * 构建任务分解 prompt
-     *
-     * @deprecated 请使用 PromptWriter Character 代替
-     */
-    @Deprecated
-    private String buildTaskDecomposePrompt(Task task, List<WorkspaceMember> members,
-            String systemPrompt) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(systemPrompt).append("\n\n");
-        sb.append("## 任务信息\n");
-        sb.append("任务ID: ").append(task.getId()).append("\n");
-        sb.append("任务名称: ").append(task.getName()).append("\n");
-        sb.append("任务描述: ").append(task.getDescription()).append("\n");
-        sb.append("任务输入: ").append(task.getInput()).append("\n\n");
-        sb.append("## 可用成员列表\n");
-        for (WorkspaceMember member : members) {
-            sb.append("- ID: ").append(member.getCharacterId())
-                    .append(", 角色: ").append(member.getRole())
-                    .append(", 层级: ").append(member.getLayer()).append("\n");
-        }
-        sb.append("\n## 工作空间信息\n");
-        sb.append("工作空间ID: ").append(task.getWorkspaceId()).append("\n");
-        return sb.toString();
-    }
+    // /**
+    //  * 构建任务分解 prompt
+    //  *
+    //  * @deprecated 请使用 PromptWriter Character 代替
+    //  */
+    // @Deprecated
+    // private String buildTaskDecomposePrompt(Task task, List<WorkspaceMember> members,
+    //         String systemPrompt) {
+    //     StringBuilder sb = new StringBuilder();
+    //     sb.append(systemPrompt).append("\n\n");
+    //     sb.append("## 任务信息\n");
+    //     sb.append("任务ID: ").append(task.getId()).append("\n");
+    //     sb.append("任务名称: ").append(task.getName()).append("\n");
+    //     sb.append("任务描述: ").append(task.getDescription()).append("\n");
+    //     sb.append("任务输入: ").append(task.getInput()).append("\n\n");
+    //     sb.append("## 可用成员列表\n");
+    //     for (WorkspaceMember member : members) {
+    //         sb.append("- ID: ").append(member.getCharacterId())
+    //                 .append(", 角色: ").append(member.getRole())
+    //                 .append(", 层级: ").append(member.getLayer()).append("\n");
+    //     }
+    //     sb.append("\n## 工作空间信息\n");
+    //     sb.append("工作空间ID: ").append(task.getWorkspaceId()).append("\n");
+    //     return sb.toString();
+    // }
 
     /**
      * 解析选中的 Character（简化版本，实际需要 JSON 解析）

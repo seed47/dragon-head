@@ -183,7 +183,7 @@ public class ReActExecutor {
 
         // 执行动作
         String modelId = resolveModelId(context, action);
-        return executeAction(action, modelId);
+        return executeAction(context, action, modelId);
     }
 
     /**
@@ -379,18 +379,24 @@ public class ReActExecutor {
     /**
      * 执行动作
      *
+     * @param context 执行上下文
      * @param action  动作
      * @param modelId 模型 ID
      * @return 执行结果
      */
-    private String executeAction(Action action, String modelId) {
+    private String executeAction(ReActContext context, Action action, String modelId) {
         switch (action.getType()) {
             case TOOL -> {
-                Optional<ToolConnector> connector = toolRegistry.get(action.getToolName());
+                String toolName = action.getToolName();
+                if (!context.isToolAllowed(toolName)) {
+                    log.warn("[ReAct] Tool {} not allowed for this character", toolName);
+                    return "Tool not allowed: " + toolName;
+                }
+                Optional<ToolConnector> connector = toolRegistry.get(toolName);
                 if (connector != null && connector.isPresent()) {
                     return connector.get().execute(action.getParameters()).getContent();
                 }
-                return "Tool not found: " + action.getToolName();
+                return "Tool not found: " + toolName;
             }
 
             case MEMORY -> {
@@ -401,7 +407,7 @@ public class ReActExecutor {
             }
 
             case RESPOND, FINISH -> {
-                return action.getToolName();
+                return action.getResponse() != null ? action.getResponse() : action.getToolName();
             }
 
             default -> {
@@ -447,6 +453,31 @@ public class ReActExecutor {
             prompt.append("观察结果:\n");
             for (int i = 0; i < context.getObservations().size(); i++) {
                 prompt.append(i + 1).append(". ").append(context.getObservations().get(i)).append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        // 添加可用工具信息
+        if (!context.getAllowedTools().isEmpty()) {
+            prompt.append("## 可用工具\n");
+            prompt.append("你可以使用以下工具来完成用户的请求：\n\n");
+            for (String toolName : context.getAllowedTools()) {
+                toolRegistry.get(toolName).ifPresent(connector -> {
+                    ToolConnector.ToolSchema schema = connector.getSchema();
+                    prompt.append(String.format("- **%s**: %s\n",
+                            schema.getName(),
+                            schema.getDescription() != null ? schema.getDescription() : "无描述"));
+                    if (schema.getInputParameters() != null && !schema.getInputParameters().isEmpty()) {
+                        prompt.append("  参数:\n");
+                        for (ToolConnector.ToolParameter param : schema.getInputParameters()) {
+                            prompt.append(String.format("    - %s (%s): %s %s\n",
+                                    param.getName(),
+                                    param.getType(),
+                                    param.getDescription() != null ? param.getDescription() : "",
+                                    param.isRequired() ? "[必填]" : "[可选]"));
+                        }
+                    }
+                });
             }
             prompt.append("\n");
         }

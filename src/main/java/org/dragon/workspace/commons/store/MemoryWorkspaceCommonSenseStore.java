@@ -11,10 +11,9 @@ import org.dragon.workspace.commons.CommonSense;
 import org.dragon.workspace.commons.CommonSenseFolder;
 import org.dragon.workspace.commons.content.CommonSenseContent;
 import org.dragon.workspace.commons.content.CommonSenseContentParser;
-import org.dragon.workspace.commons.content.ContentType;
 import org.dragon.workspace.commons.content.ConstraintContent;
+import org.dragon.workspace.commons.content.ContentType;
 import org.dragon.workspace.commons.content.ForbiddenContent;
-import org.dragon.workspace.commons.content.TemplateContent;
 import org.springframework.stereotype.Component;
 
 /**
