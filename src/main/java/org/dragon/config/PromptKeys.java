@@ -88,6 +88,35 @@ public class PromptKeys {
      */
     public static final String PROJECT_MANAGER_DECOMPOSE = "projectManager.decompose";
 
+    // ==================== Character 协作模块 ====================
+
+    /**
+     * Character 协作 prompt
+     */
+    public static final String CHARACTER_COLLABORATION = "character.collaboration";
+
+    /**
+     * Character 追问用户 prompt
+     */
+    public static final String CHARACTER_ASK_USER = "character.askUser";
+
+    /**
+     * Character 等待依赖 prompt
+     */
+    public static final String CHARACTER_WAIT_DEPENDENCY = "character.waitDependency";
+
+    /**
+     * ProjectManager 任务续跑决策 prompt
+     */
+    public static final String PROJECT_MANAGER_CONTINUATION_DECISION = "projectManager.continuationDecision";
+
+    // ==================== Task 续跑模块 ====================
+
+    /**
+     * Task 续跑摘要 prompt
+     */
+    public static final String TASK_RESUME_SUMMARY = "task.resumeSummary";
+
     // ==================== 便捷方法 ====================
 
     /**

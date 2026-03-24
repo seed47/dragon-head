@@ -102,4 +102,12 @@ public class MemoryChatMessageStore implements ChatMessageStore {
                 .collect(Collectors.toList());
         keysToRemove.forEach(messages::remove);
     }
+
+    @Override
+    public List<ChatMessage> findByTaskId(String taskId) {
+        return messages.values().stream()
+                .filter(m -> taskId.equals(m.getTaskId()))
+                .sorted((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()))
+                .collect(Collectors.toList());
+    }
 }

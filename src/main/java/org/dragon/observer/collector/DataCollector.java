@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
-import org.dragon.character.task.Task;
-import org.dragon.character.task.TaskStatus;
+import org.dragon.task.Task;
+import org.dragon.task.TaskStatus;
+import org.dragon.task.TaskStore;
 import org.dragon.observer.evaluation.EvaluationEngine;
 import org.dragon.workspace.Workspace;
 import org.dragon.workspace.WorkspaceRegistry;
@@ -34,6 +36,7 @@ public class DataCollector {
 
     private final WorkspaceRegistry workspaceRegistry;
     private final CharacterRegistry characterRegistry;
+    private final TaskStore taskStore;
 
     /**
      * 采集任务数据
@@ -49,27 +52,22 @@ public class DataCollector {
 
         List<EvaluationEngine.TaskData> taskDataList = new ArrayList<>();
 
-        // 如果指定了 workspace，先获取该 workspace 下的所有 Organization 和 Character
-        List<String> targetCharacterIds = new ArrayList<>();
-
+        List<Task> tasks;
         if (workspaceId != null) {
-            Workspace workspace = workspaceRegistry.get(workspaceId).orElse(null);
-            if (workspace != null) {
-                // TODO: 需要 Workspace 和 Organization 的关联关系
-                // 暂时通过 OrganizationRegistry 获取所有 Organization
+            tasks = taskStore.findByWorkspaceId(workspaceId);
+        } else {
+            // 全局采集：从所有 Character 关联的任务获取
+            tasks = new ArrayList<>();
+            for (Character character : characterRegistry.listAll()) {
+                tasks.addAll(taskStore.findByCharacterId(character.getId()));
             }
         }
 
-        // 获取所有 Character 的任务数据
-        for (Character character : characterRegistry.listAll()) {
-            List<Task> tasks = character.listTasks();
-
-            for (Task task : tasks) {
-                LocalDateTime taskTime = task.getCreatedAt();
-                if (taskTime != null && !taskTime.isBefore(startTime) && !taskTime.isAfter(endTime)) {
-                    EvaluationEngine.TaskData taskData = convertToTaskData(character.getId(), task);
-                    taskDataList.add(taskData);
-                }
+        for (Task task : tasks) {
+            LocalDateTime taskTime = task.getCreatedAt();
+            if (taskTime != null && !taskTime.isBefore(startTime) && !taskTime.isAfter(endTime)) {
+                EvaluationEngine.TaskData taskData = convertToTaskData(task);
+                taskDataList.add(taskData);
             }
         }
 
@@ -88,17 +86,11 @@ public class DataCollector {
     public List<EvaluationEngine.TaskData> collectCharacterTaskData(String characterId, LocalDateTime startTime, LocalDateTime endTime) {
         List<EvaluationEngine.TaskData> taskDataList = new ArrayList<>();
 
-        Character character = characterRegistry.get(characterId).orElse(null);
-        if (character == null) {
-            log.warn("[DataCollector] Character not found: {}", characterId);
-            return taskDataList;
-        }
-
-        List<Task> tasks = character.listTasks();
+        List<Task> tasks = taskStore.findByCharacterId(characterId);
         for (Task task : tasks) {
             LocalDateTime taskTime = task.getCreatedAt();
             if (taskTime != null && !taskTime.isBefore(startTime) && !taskTime.isAfter(endTime)) {
-                EvaluationEngine.TaskData taskData = convertToTaskData(characterId, task);
+                EvaluationEngine.TaskData taskData = convertToTaskData(task);
                 taskDataList.add(taskData);
             }
         }
@@ -135,8 +127,14 @@ public class DataCollector {
     public List<EvaluationEngine.TaskData> collectWorkspaceTaskData(String workspaceId, LocalDateTime startTime, LocalDateTime endTime) {
         List<EvaluationEngine.TaskData> taskDataList = new ArrayList<>();
 
-        // TODO: 需要 Workspace 和 Character 的关联关系
-        // 暂时返回空列表
+        List<Task> tasks = taskStore.findByWorkspaceId(workspaceId);
+        for (Task task : tasks) {
+            LocalDateTime taskTime = task.getCreatedAt();
+            if (taskTime != null && !taskTime.isBefore(startTime) && !taskTime.isAfter(endTime)) {
+                EvaluationEngine.TaskData taskData = convertToTaskData(task);
+                taskDataList.add(taskData);
+            }
+        }
 
         return taskDataList;
     }
@@ -159,22 +157,17 @@ public class DataCollector {
         metrics.setCharacterCount(characterCount);
 
         // 统计任务总数和状态分布
-        int totalTasks = 0;
-        int completedTasks = 0;
-        int failedTasks = 0;
+        List<Task> tasks = workspaceId != null
+                ? taskStore.findByWorkspaceId(workspaceId)
+                : taskStore.findByStatus(null).stream().collect(Collectors.toList());
 
-        for (Character character : characterRegistry.listAll()) {
-            List<Task> tasks = character.listTasks();
-            totalTasks += tasks.size();
-
-            completedTasks += tasks.stream()
-                    .filter(t -> t.getStatus() == TaskStatus.COMPLETED)
-                    .count();
-
-            failedTasks += tasks.stream()
-                    .filter(t -> t.getStatus() == TaskStatus.FAILED)
-                    .count();
-        }
+        int totalTasks = tasks.size();
+        int completedTasks = (int) tasks.stream()
+                .filter(t -> t.getStatus() == TaskStatus.COMPLETED)
+                .count();
+        int failedTasks = (int) tasks.stream()
+                .filter(t -> t.getStatus() == TaskStatus.FAILED)
+                .count();
 
         metrics.setTotalTasks(totalTasks);
         metrics.setCompletedTasks(completedTasks);
@@ -187,12 +180,12 @@ public class DataCollector {
     /**
      * 将 Task 转换为 TaskData
      */
-    private EvaluationEngine.TaskData convertToTaskData(String characterId, Task task) {
+    private EvaluationEngine.TaskData convertToTaskData(Task task) {
         EvaluationEngine.TaskData taskData = new EvaluationEngine.TaskData();
         taskData.setTaskId(task.getId());
-        taskData.setTargetId(characterId);
+        taskData.setTargetId(task.getCharacterId());
         taskData.setTargetType(org.dragon.observer.evaluation.EvaluationRecord.TargetType.CHARACTER);
-        taskData.setTaskInput(task.getInput());
+        taskData.setTaskInput(task.getInput() != null ? task.getInput().toString() : null);
         taskData.setTaskOutput(task.getResult());
         taskData.setSuccess(task.getStatus() == TaskStatus.COMPLETED);
         taskData.setErrorMessage(task.getErrorMessage());

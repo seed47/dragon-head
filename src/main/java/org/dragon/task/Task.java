@@ -3,6 +3,7 @@ package org.dragon.task;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -136,6 +137,67 @@ public class Task {
      * 完成时间
      */
     private LocalDateTime completedAt;
+
+    /**
+     * 执行模式
+     */
+    private String executionMode;
+
+    /**
+     * 工作流 ID
+     */
+    private String workflowId;
+
+    /**
+     * 依赖任务 ID 列表
+     */
+    @Builder.Default
+    private List<String> dependencyTaskIds = new ArrayList<>();
+
+    /**
+     * 等待原因
+     */
+    private String waitingReason;
+
+    /**
+     * 恢复令牌
+     */
+    private String resumeToken;
+
+    /**
+     * 源消息 ID
+     */
+    private String sourceMessageId;
+
+    /**
+     * 源聊天 ID
+     */
+    private String sourceChatId;
+
+    /**
+     * 源渠道
+     */
+    private String sourceChannel;
+
+    /**
+     * 关联的物料 ID 列表
+     */
+    private List<String> materialIds;
+
+    /**
+     * 最后的问题（用于追问用户）
+     */
+    private String lastQuestion;
+
+    /**
+     * 交互上下文
+     */
+    private Object interactionContext;
+
+    /**
+     * 任务元数据
+     */
+    private Map<String, Object> metadata;
 
     /**
      * ExecutionStep 执行步骤

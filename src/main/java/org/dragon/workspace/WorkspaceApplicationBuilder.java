@@ -8,7 +8,9 @@ import org.dragon.workspace.service.WorkspaceLifecycleService;
 import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
 import org.dragon.workspace.service.WorkspaceTaskArrangementService;
+import org.dragon.workspace.service.WorkspaceTaskExecutionService;
 import org.dragon.workspace.service.WorkspaceTaskService;
+import org.dragon.workspace.service.TaskContinuationResolver;
 
 /**
  * WorkspaceApplicationBuilder Workspace 应用构建器
@@ -32,6 +34,8 @@ public class WorkspaceApplicationBuilder {
     CharacterRegistry characterRegistry;
     WorkspaceTaskArrangementService workspaceTaskArrangementService;
     TaskStore taskStore;
+    TaskContinuationResolver taskContinuationResolver;
+    WorkspaceTaskExecutionService taskExecutionService;
 
     /**
      * 设置 Workspace ID
@@ -144,6 +148,28 @@ public class WorkspaceApplicationBuilder {
     }
 
     /**
+     * 设置任务续跑解析器
+     *
+     * @param taskContinuationResolver TaskContinuationResolver
+     * @return self
+     */
+    public WorkspaceApplicationBuilder taskContinuationResolver(TaskContinuationResolver taskContinuationResolver) {
+        this.taskContinuationResolver = taskContinuationResolver;
+        return this;
+    }
+
+    /**
+     * 设置任务执行服务
+     *
+     * @param taskExecutionService WorkspaceTaskExecutionService
+     * @return self
+     */
+    public WorkspaceApplicationBuilder taskExecutionService(WorkspaceTaskExecutionService taskExecutionService) {
+        this.taskExecutionService = taskExecutionService;
+        return this;
+    }
+
+    /**
      * 构建 WorkspaceApplication 实例
      * 在构建过程中可以完成 Workspace 的初始化逻辑
      *
@@ -153,6 +179,21 @@ public class WorkspaceApplicationBuilder {
         // 验证必需属性
         if (workspaceId == null || workspaceId.isEmpty()) {
             throw new IllegalStateException("workspaceId is required");
+        }
+        if (workspaceTaskService == null) {
+            throw new IllegalStateException("workspaceTaskService is required");
+        }
+        if (workspaceTaskArrangementService == null) {
+            throw new IllegalStateException("workspaceTaskArrangementService is required");
+        }
+        if (taskStore == null) {
+            throw new IllegalStateException("taskStore is required");
+        }
+        if (taskContinuationResolver == null) {
+            throw new IllegalStateException("taskContinuationResolver is required");
+        }
+        if (taskExecutionService == null) {
+            throw new IllegalStateException("taskExecutionService is required");
         }
 
         // 可以在这里添加初始化逻辑，例如：

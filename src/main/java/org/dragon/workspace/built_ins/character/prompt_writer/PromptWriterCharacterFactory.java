@@ -11,6 +11,7 @@ import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.Character;
 import org.dragon.character.CharacterFactory;
 import org.dragon.character.CharacterRegistry;
+import org.dragon.character.CharacterRuntimeBinder;
 import org.dragon.config.PromptManager;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,7 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
     private final ToolRegistry toolRegistry;
     private final PromptWriterCharacterTools promptWriterCharacterTools;
     private final PromptManager promptManager;
+    private final CharacterRuntimeBinder characterRuntimeBinder;
 
     @Override
     public String getCharacterType() {
@@ -75,6 +77,9 @@ public class PromptWriterCharacterFactory implements CharacterFactory<Character>
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+
+        // 绑定运行时依赖
+        characterRuntimeBinder.bind(character, workspaceId);
 
         // 注册到 CharacterRegistry
         characterRegistry.register(character);

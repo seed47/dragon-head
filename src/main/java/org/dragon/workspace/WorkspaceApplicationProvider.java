@@ -3,12 +3,19 @@ package org.dragon.workspace;
 import org.dragon.character.Character;
 import org.dragon.character.CharacterRegistry;
 import org.dragon.observer.actionlog.ObserverActionLogService;
+import org.dragon.task.TaskStore;
 import org.dragon.workspace.service.WorkspaceHiringService;
 import org.dragon.workspace.service.WorkspaceLifecycleService;
 import org.dragon.workspace.service.WorkspaceMaterialService;
 import org.dragon.workspace.service.WorkspaceMemberManagementService;
+import org.dragon.workspace.service.WorkspaceTaskArrangementService;
+import org.dragon.workspace.service.WorkspaceTaskExecutionService;
 import org.dragon.workspace.service.WorkspaceTaskService;
+import org.dragon.workspace.service.TaskContinuationResolver;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,18 +39,27 @@ public class WorkspaceApplicationProvider {
     private final WorkspaceMemberManagementService workspaceMemberService;
     private final WorkspaceMaterialService materialService;
     private final WorkspaceTaskService workspaceTaskService;
+    private final WorkspaceTaskArrangementService workspaceTaskArrangementService;
+    private final TaskStore taskStore;
     private final CharacterRegistry characterRegistry;
+    private final TaskContinuationResolver taskContinuationResolver;
+    private final WorkspaceTaskExecutionService taskExecutionService;
+
+    /**
+     * WorkspaceApplication 缓存，避免每次 new 一个新实例
+     */
+    private final Map<String, WorkspaceApplication> applicationCache = new ConcurrentHashMap<>();
 
     /**
      * 获取 WorkspaceApplication 实例
      * 如果是首次调用，需要通过 Builder 构建
-     * 后续可以缓存使用
+     * 后续从缓存获取
      *
      * @param workspaceId Workspace ID
      * @return WorkspaceApplication 实例
      */
     public WorkspaceApplication getApplication(String workspaceId) {
-        return new WorkspaceApplicationBuilder()
+        return applicationCache.computeIfAbsent(workspaceId, id -> new WorkspaceApplicationBuilder()
                 .workspaceId(workspaceId)
                 .workspaceLifecycleService(workspaceLifecycleService)
                 .workspaceHiringService(workspaceHiringService)
@@ -51,8 +67,12 @@ public class WorkspaceApplicationProvider {
                 .workspaceMemberService(workspaceMemberService)
                 .materialService(materialService)
                 .workspaceTaskService(workspaceTaskService)
+                .workspaceTaskArrangementService(workspaceTaskArrangementService)
+                .taskStore(taskStore)
                 .characterRegistry(characterRegistry)
-                .build();
+                .taskContinuationResolver(taskContinuationResolver)
+                .taskExecutionService(taskExecutionService)
+                .build());
     }
 
     /**

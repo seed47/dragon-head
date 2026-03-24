@@ -49,6 +49,12 @@ public class PromptInitializer implements CommandLineRunner {
         // 初始化 ProjectManager 相关 prompts
         initProjectManagerPrompts();
 
+        // 初始化 Character 协作相关 prompts
+        initCharacterCollaborationPrompts();
+
+        // 初始化 Task 续跑相关 prompts
+        initTaskResumePrompts();
+
         log.info("[PromptInitializer] Prompt initialization completed");
     }
 
@@ -162,6 +168,30 @@ public class PromptInitializer implements CommandLineRunner {
             promptManager.setGlobalPrompt(PromptKeys.PROJECT_MANAGER_DECOMPOSE,
                     "请将以下任务拆解为可执行的子任务。");
         }
+    }
+
+    private void initCharacterCollaborationPrompts() {
+        // Character 协作 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.CHARACTER_COLLABORATION,
+                "你是一个专业的 AI 助手，正在与其他 Character 协作完成任务。");
+
+        // Character 追问用户 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.CHARACTER_ASK_USER,
+                "你需要向用户询问更多信息以完成任务。请用简洁清晰的语言提问。");
+
+        // Character 等待依赖 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.CHARACTER_WAIT_DEPENDENCY,
+                "当前任务需要等待其他任务完成后才能继续执行。");
+
+        // ProjectManager 续跑决策 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.PROJECT_MANAGER_CONTINUATION_DECISION,
+                "请判断任务应该继续执行还是等待用户输入。");
+    }
+
+    private void initTaskResumePrompts() {
+        // Task 续跑摘要 Prompt
+        promptManager.setGlobalPrompt(PromptKeys.TASK_RESUME_SUMMARY,
+                "请总结以下任务的执行进度和上下文，以便继续执行：");
     }
 
     /**

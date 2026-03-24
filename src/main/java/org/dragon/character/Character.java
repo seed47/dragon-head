@@ -18,10 +18,6 @@ import org.dragon.character.mind.Mind;
 import org.dragon.config.PromptKeys;
 import org.dragon.config.PromptManager;
 import org.dragon.character.mind.DefaultMind;
-import org.dragon.character.task.DefaultTaskManager;
-import org.dragon.character.task.Task;
-import org.dragon.character.task.TaskManager;
-import org.dragon.character.task.TaskOperation;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,12 +37,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Character {
-
-    /**
-     * 任务管理器
-     */
-    @Builder.Default
-    private TaskManager taskManager = new DefaultTaskManager();
 
     /**
      * ReAct 执行器
@@ -429,155 +419,4 @@ public class Character {
         }
     }
 
-    // ==================== 任务管理接口 ====================
-
-    /**
-     * 添加任务
-     *
-     * @param task 任务
-     * @return 添加后的任务
-     */
-    public Task addTask(Task task) {
-        task.setCharacterId(this.id);
-        if (task.getType() == null) {
-            task.setType(Task.TaskType.USER_REQUEST);
-        }
-        return taskManager.addTask(task);
-    }
-
-    /**
-     * 创建并添加任务，然后执行
-     *
-     * @param userInput 用户输入
-     * @return 执行结果
-     */
-    public Task addTaskAndRun(String userInput) {
-        Task task = Task.builder()
-                .name("Task-" + System.currentTimeMillis())
-                .type(Task.TaskType.USER_REQUEST)
-                .input(userInput)
-                .characterId(this.id)
-                .executionMode("REACT")
-                .build();
-
-        task = addTask(task);
-
-        // 执行任务
-        try {
-            String result = run(userInput);
-            task.setResult(result);
-            task.setStatus(org.dragon.character.task.TaskStatus.COMPLETED);
-        } catch (Exception e) {
-            task.setErrorMessage(e.getMessage());
-            task.setStatus(org.dragon.character.task.TaskStatus.FAILED);
-        }
-
-        return task;
-    }
-
-    /**
-     * 操作任务
-     *
-     * @param taskId    任务ID
-     * @param operation 操作
-     * @return 操作后的任务，如果不存在则返回 null
-     */
-    public Task operateTask(String taskId, TaskOperation operation) {
-        return taskManager.operateTask(taskId, operation);
-    }
-
-    /**
-     * 暂停任务
-     *
-     * @param taskId 任务ID
-     * @return 暂停后的任务，如果不存在则返回 null
-     */
-    public Task pauseTask(String taskId) {
-        return operateTask(taskId, TaskOperation.PAUSE);
-    }
-
-    /**
-     * 恢复任务
-     *
-     * @param taskId 任务ID
-     * @return 恢复后的任务，如果不存在则返回 null
-     */
-    public Task resumeTask(String taskId) {
-        return operateTask(taskId, TaskOperation.RESUME);
-    }
-
-    /**
-     * 取消任务
-     *
-     * @param taskId 任务ID
-     * @return 取消后的任务，如果不存在则返回 null
-     */
-    public Task cancelTask(String taskId) {
-        return operateTask(taskId, TaskOperation.CANCEL);
-    }
-
-    /**
-     * 重试任务
-     *
-     * @param taskId 任务ID
-     * @return 任务，如果不存在则返回 null
-     */
-    public Task retryTask(String taskId) {
-        return operateTask(taskId, TaskOperation.RETRY);
-    }
-
-    /**
-     * 获取任务
-     *
-     * @param taskId 任务ID
-     * @return 任务，如果不存在则返回 null
-     */
-    public Task getTask(String taskId) {
-        return taskManager.getTask(taskId);
-    }
-
-    /**
-     * 列出所有任务
-     *
-     * @return 任务列表
-     */
-    public List<Task> listTasks() {
-        return taskManager.listTasks();
-    }
-
-    /**
-     * 根据状态获取任务
-     *
-     * @param status 任务状态
-     * @return 任务列表
-     */
-    public List<Task> getTasksByStatus(org.dragon.character.task.TaskStatus status) {
-        return taskManager.getTasksByStatus(status);
-    }
-
-    /**
-     * 删除任务
-     *
-     * @param taskId 任务ID
-     * @return 是否删除成功
-     */
-    public boolean deleteTask(String taskId) {
-        return taskManager.deleteTask(taskId);
-    }
-
-    /**
-     * 清空所有任务
-     */
-    public void clearTasks() {
-        taskManager.clear();
-    }
-
-    /**
-     * 获取任务数量
-     *
-     * @return 任务数量
-     */
-    public int getTaskCount() {
-        return taskManager.size();
-    }
 }

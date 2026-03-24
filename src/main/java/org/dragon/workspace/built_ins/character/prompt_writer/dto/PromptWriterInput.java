@@ -52,6 +52,37 @@ public class PromptWriterInput {
     private Map<String, Object> contextHints;
 
     /**
+     * 协作会话 ID（可选）
+     */
+    private String collaborationSessionId;
+
+    /**
+     * 同级 Character 列表（可选）
+     */
+    private List<String> peerCharacterIds;
+
+    /**
+     * 依赖任务列表（可选）
+     */
+    private List<String> dependencyTaskIds;
+
+    /**
+     * 最新会话消息（可选）
+     */
+    private List<String> latestSessionMessages;
+
+    /**
+     * 协作约束（可选）
+     */
+    private String collaborationConstraint;
+
+    /**
+     * 是否允许追问用户
+     */
+    @Builder.Default
+    private boolean allowFollowUp = true;
+
+    /**
      * 任务信息
      */
     @Data
@@ -77,5 +108,7 @@ public class PromptWriterInput {
         private String characterId;
         private String role;
         private String layer;
+        private String capability;
+        private String description;
     }
 }

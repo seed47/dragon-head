@@ -27,6 +27,7 @@ public class WorkspaceTaskService {
 
     private final TaskStore taskStore;
     private final WorkspaceRegistry workspaceRegistry;
+    private final TaskBridge taskBridge;
 
     /**
      * 获取任务
@@ -189,5 +190,126 @@ public class WorkspaceTaskService {
         return tasks.stream()
                 .filter(task -> task.getStatus() == status)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * 暂停任务
+     *
+     * @param workspaceId 工作空间 ID
+     * @param taskId 任务 ID
+     * @param reason 暂停原因
+     * @return 更新后的任务
+     */
+    public Task suspendTask(String workspaceId, String taskId, String reason) {
+        Task task = getTask(workspaceId, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+        task.setStatus(TaskStatus.SUSPENDED);
+        task.setWaitingReason(reason);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskStore.update(task);
+
+        log.info("[WorkspaceTaskService] Suspended task {}: {}", taskId, reason);
+        return task;
+    }
+
+    /**
+     * 标记任务等待用户输入
+     *
+     * @param workspaceId 工作空间 ID
+     * @param taskId 任务 ID
+     * @param question 需要询问用户的问题
+     * @return 更新后的任务
+     */
+    public Task markWaitingUserInput(String workspaceId, String taskId, String question) {
+        Task task = getTask(workspaceId, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+        task.setStatus(TaskStatus.WAITING_USER_INPUT);
+        task.setLastQuestion(question);
+        task.setWaitingReason("WAITING_USER_INPUT");
+        task.setUpdatedAt(LocalDateTime.now());
+        taskStore.update(task);
+
+        log.info("[WorkspaceTaskService] Task {} waiting for user input: {}", taskId, question);
+        return task;
+    }
+
+    /**
+     * 标记任务等待依赖完成
+     *
+     * @param workspaceId 工作空间 ID
+     * @param taskId 任务 ID
+     * @param dependencyTaskId 依赖的任务 ID
+     * @return 更新后的任务
+     */
+    public Task markWaitingDependency(String workspaceId, String taskId, String dependencyTaskId) {
+        Task task = getTask(workspaceId, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+        task.setStatus(TaskStatus.WAITING_DEPENDENCY);
+        task.setWaitingReason("WAITING_DEPENDENCY: " + dependencyTaskId);
+        task.setUpdatedAt(LocalDateTime.now());
+
+        // 添加依赖
+        if (task.getDependencyTaskIds() == null) {
+            task.setDependencyTaskIds(new java.util.ArrayList<>());
+        }
+        if (!task.getDependencyTaskIds().contains(dependencyTaskId)) {
+            task.getDependencyTaskIds().add(dependencyTaskId);
+        }
+
+        taskStore.update(task);
+        log.info("[WorkspaceTaskService] Task {} waiting for dependency: {}", taskId, dependencyTaskId);
+        return task;
+    }
+
+    /**
+     * 恢复任务
+     *
+     * @param workspaceId 工作空间 ID
+     * @param taskId 任务 ID
+     * @param newInput 新的输入（用户回复）
+     * @return 更新后的任务
+     */
+    public Task resumeTask(String workspaceId, String taskId, Object newInput) {
+        Task task = getTask(workspaceId, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+        // 更新输入（追加用户回复）
+        if (newInput != null) {
+            Object currentInput = task.getInput();
+            task.setInput(currentInput != null ? currentInput.toString() + "\n" + newInput.toString() : newInput.toString());
+        }
+
+        task.setStatus(TaskStatus.RUNNING);
+        task.setWaitingReason(null);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskStore.update(task);
+
+        log.info("[WorkspaceTaskService] Resumed task {}", taskId);
+        return task;
+    }
+
+    /**
+     * 追加执行消息到任务
+     *
+     * @param workspaceId 工作空间 ID
+     * @param taskId 任务 ID
+     * @param message 执行消息
+     * @return 更新后的任务
+     */
+    public Task appendExecutionMessage(String workspaceId, String taskId, Task.ExecutionMessage message) {
+        Task task = getTask(workspaceId, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+        if (task.getExecutionMessages() == null) {
+            task.setExecutionMessages(new java.util.ArrayList<>());
+        }
+        task.getExecutionMessages().add(message);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskStore.update(task);
+
+        return task;
     }
 }

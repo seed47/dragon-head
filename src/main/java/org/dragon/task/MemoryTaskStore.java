@@ -69,6 +69,37 @@ public class MemoryTaskStore implements TaskStore {
     }
 
     @Override
+    public List<Task> findByCharacterId(String characterId) {
+        return store.values().stream()
+                .filter(task -> characterId.equals(task.getCharacterId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Task> findByCreatorId(String creatorId) {
+        return store.values().stream()
+                .filter(task -> creatorId.equals(task.getCreatorId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Task> findByCollaborationSessionId(String collaborationSessionId) {
+        return store.values().stream()
+                .filter(task -> collaborationSessionId.equals(task.getCollaborationSessionId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Task> findWaitingTasks(String workspaceId) {
+        return store.values().stream()
+                .filter(task -> workspaceId.equals(task.getWorkspaceId()))
+                .filter(task -> task.getStatus() == TaskStatus.SUSPENDED
+                        || task.getStatus() == TaskStatus.WAITING_USER_INPUT
+                        || task.getStatus() == TaskStatus.WAITING_DEPENDENCY)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public boolean exists(String id) {
         return store.containsKey(id);
     }

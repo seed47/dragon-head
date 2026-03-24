@@ -9,6 +9,7 @@ import org.dragon.agent.tool.ToolRegistry;
 import org.dragon.character.Character;
 import org.dragon.character.CharacterFactory;
 import org.dragon.character.CharacterRegistry;
+import org.dragon.character.CharacterRuntimeBinder;
 import org.dragon.workspace.WorkspaceRegistry;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,7 @@ public class HrCharacterFactory implements CharacterFactory<Character> {
     private final CharacterRegistry characterRegistry;
     private final WorkspaceRegistry workspaceRegistry;
     private final ToolRegistry toolRegistry;
+    private final CharacterRuntimeBinder characterRuntimeBinder;
 
     @Override
     public String getCharacterType() {
@@ -59,6 +61,9 @@ public class HrCharacterFactory implements CharacterFactory<Character> {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+
+        // 绑定运行时依赖
+        characterRuntimeBinder.bind(hrCharacter, workspaceId);
 
         // 注册到 CharacterRegistry
         characterRegistry.register(hrCharacter);

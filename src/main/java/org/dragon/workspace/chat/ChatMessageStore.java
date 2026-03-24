@@ -94,4 +94,12 @@ public interface ChatMessageStore {
      * @param workspaceId 工作空间 ID
      */
     void deleteByWorkspaceId(String workspaceId);
+
+    /**
+     * 根据任务 ID 查询消息
+     *
+     * @param taskId 任务 ID
+     * @return 消息列表
+     */
+    List<ChatMessage> findByTaskId(String taskId);
 }

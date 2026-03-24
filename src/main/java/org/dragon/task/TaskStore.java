@@ -65,6 +65,38 @@ public interface TaskStore {
     List<Task> findByStatus(TaskStatus status);
 
     /**
+     * 根据执行者 Character ID 查询任务列表
+     *
+     * @param characterId Character ID
+     * @return 任务列表
+     */
+    List<Task> findByCharacterId(String characterId);
+
+    /**
+     * 根据创建者 ID 查询任务列表
+     *
+     * @param creatorId 创建者 ID
+     * @return 任务列表
+     */
+    List<Task> findByCreatorId(String creatorId);
+
+    /**
+     * 根据协作会话 ID 查询任务列表
+     *
+     * @param collaborationSessionId 协作会话 ID
+     * @return 任务列表
+     */
+    List<Task> findByCollaborationSessionId(String collaborationSessionId);
+
+    /**
+     * 查询等待中的任务
+     *
+     * @param workspaceId 工作空间 ID
+     * @return 等待中的任务列表
+     */
+    List<Task> findWaitingTasks(String workspaceId);
+
+    /**
      * 检查任务是否存在
      *
      * @param id 任务 ID
