@@ -119,7 +119,7 @@ public interface AgentTool {
         private String sessionKey;
         /** 当前工作目录 */
         private String cwd;
-        /** OpenClaw 配置 */
-        private org.dragon.config.config.ConfigProperties config;
+        /** 项目配置 */
+        private ConfigProperties config;
     }
 }

@@ -68,7 +68,7 @@ public final class ToolPolicyUtils {
         m.put("group:automation", List.of("cron", "gateway"));
         m.put("group:messaging", List.of("message"));
         m.put("group:nodes", List.of("nodes"));
-        m.put("group:openclaw", List.of(
+        m.put("group:dragonhead", List.of(
                 "browser", "canvas", "nodes", "cron", "message", "gateway",
                 "agents_list", "sessions_list", "sessions_history", "sessions_send",
                 "sessions_spawn", "session_status", "memory_search", "memory_get",

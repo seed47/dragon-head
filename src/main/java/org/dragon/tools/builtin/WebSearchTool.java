@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>
  * 使用 SearXNG / Tavily / Brave Search API 格式，可通过
- * OPENCLAW_SEARCH_ENDPOINT 环境变量配置。如果未配置则返回无操作消息。
+ * DRAGONHEAD_SEARCH_ENDPOINT 环境变量配置。如果未配置则返回无操作消息。
  * </p>
  */
 @Slf4j
@@ -60,12 +60,12 @@ public class WebSearchTool implements AgentTool {
         String query = args.get("query").asText();
         int maxResults = args.has("max_results") ? args.get("max_results").asInt(5) : 5;
 
-        String searchEndpoint = System.getenv("OPENCLAW_SEARCH_ENDPOINT");
-        String searchApiKey = System.getenv("OPENCLAW_SEARCH_API_KEY");
+        String searchEndpoint = System.getenv("DRAGONHEAD_SEARCH_ENDPOINT");
+        String searchApiKey = System.getenv("DRAGONHEAD_SEARCH_API_KEY");
 
         if (searchEndpoint == null || searchEndpoint.isBlank()) {
             return CompletableFuture.completedFuture(ToolResult.fail(
-                    "Web search is not configured. Set OPENCLAW_SEARCH_ENDPOINT env var. Query: " + query));
+                    "Web search is not configured. Set DRAGONHEAD_SEARCH_ENDPOINT env var. Query: " + query));
         }
 
         try {

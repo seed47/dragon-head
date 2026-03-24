@@ -101,7 +101,7 @@ public class WebFetchTool implements AgentTool {
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(uri).timeout(REQUEST_TIMEOUT)
-                    .header("User-Agent", "Mozilla/5.0 (compatible; OpenClaw/1.0)")
+                    .header("User-Agent", "Mozilla/5.0 (compatible; DragonHead/1.0)")
                     .GET().build();
 
             HttpResponse<String> response = httpClient.send(

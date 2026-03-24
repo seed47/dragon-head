@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
  *
  * <p>
  * 负责管理所有可用的 Agent 工具，包括工具的注册、查找、过滤等功能。
- * 对应 TypeScript 中的 tool resolution (pi-tools.ts / openclaw-tools.ts)。
  * </p>
  */
 @Slf4j

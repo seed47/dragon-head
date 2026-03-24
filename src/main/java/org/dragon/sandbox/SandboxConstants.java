@@ -21,7 +21,7 @@ public final class SandboxConstants {
     // ── Docker ──────────────────────────────────────────────────────
 
     /** 默认沙箱镜像 */
-    public static final String DEFAULT_SANDBOX_IMAGE = "openclaw-sandbox:bookworm-slim";
+    public static final String DEFAULT_SANDBOX_IMAGE = "dragonhead-sandbox:bookworm-slim";
     /** 容器名称前缀 */
     public static final String DEFAULT_SANDBOX_CONTAINER_PREFIX = "dragon-sbx-";
     /** 容器内工作目录 */
@@ -48,11 +48,11 @@ public final class SandboxConstants {
     // ── 浏览器沙箱 ─────────────────────────────────────────────
 
     /** 浏览器沙箱镜像 */
-    public static final String DEFAULT_SANDBOX_BROWSER_IMAGE = "openclaw-sandbox-browser:bookworm-slim";
+    public static final String DEFAULT_SANDBOX_BROWSER_IMAGE = "dragonhead-sandbox-browser:bookworm-slim";
     /** 通用沙箱镜像 */
-    public static final String DEFAULT_SANDBOX_COMMON_IMAGE = "openclaw-sandbox-common:bookworm-slim";
+    public static final String DEFAULT_SANDBOX_COMMON_IMAGE = "dragonhead-sandbox-common:bookworm-slim";
     /** 浏览器容器名称前缀 */
-    public static final String DEFAULT_SANDBOX_BROWSER_PREFIX = "dragon-sbx-browser-";
+    public static final String DEFAULT_SANDBOX_BROWSER_PREFIX = "dragonhead-sbx-browser-";
     /** Chrome DevTools Protocol 端口 */
     public static final int DEFAULT_SANDBOX_BROWSER_CDP_PORT = 9222;
     /** VNC 端口 */
