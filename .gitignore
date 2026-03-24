@@ -35,4 +35,5 @@ build/
 ### OpenCode AGENTS ###
 /**/AGENTS.md
 /.sisyphus/ralph-loop.local.md
-.claude/settings.json
+.claude/
+.plans/

@@ -52,7 +52,8 @@ public class Skill {
     private SkillMetadata metadata;
 
     /**
-     * 技能元数据
+     * 技能元数据定义。
+     * 包含输入/输出参数定义以及额外配置信息。
      */
     @Data
     @Builder

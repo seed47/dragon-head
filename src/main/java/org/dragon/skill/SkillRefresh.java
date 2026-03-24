@@ -27,8 +27,11 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
+ * 技能刷新与版本管理器。
  * 技能文件监视器和快照版本控制。
  * 监视工作区/托管/额外技能目录的更改，并增加快照版本以触发提示词重建。
+ *
+ * @since 1.0
  */
 @Slf4j
 public final class SkillRefresh {
@@ -42,8 +45,12 @@ public final class SkillRefresh {
             Pattern.compile("(^|[\\\\/])node_modules([\\\\/]|$)"),
             Pattern.compile("(^|[\\\\/])dist([\\\\/]|$)"));
 
-    // ── 变更事件 (Change event) ────────────────────────────────────────────────
+    // ── 变更事件 (Change Event) ────────────────────────────────────────────────
 
+    /**
+     * 技能变更事件。
+     * 当技能目录发生变更时触发此事件。
+     */
     public static class SkillsChangeEvent {
         private final String workspaceDir;
         private final ChangeReason reason;
@@ -79,6 +86,10 @@ public final class SkillRefresh {
     private static final Map<String, WatchState> watchers = new ConcurrentHashMap<>();
     private static volatile long globalVersion = 0;
 
+    /**
+     * 文件监视器状态。
+     * 包含监视器服务的相关状态信息。
+     */
     private static class WatchState {
         private final WatchService service;
         private final String pathsKey;

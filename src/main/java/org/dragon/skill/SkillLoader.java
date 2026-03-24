@@ -18,7 +18,10 @@ import org.dragon.config.config.ConfigProperties;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * 技能加载器。
  * 从工作区、内置和托管目录中发现并加载技能。
+ *
+ * @since 1.0
  */
 @Slf4j
 public class SkillLoader {
@@ -245,7 +248,8 @@ public class SkillLoader {
 
     /**
      * 完整流水线：加载 → 过滤 → 构建提示词。
-     * TODO 这里需要对一下workspaceDir的具体目录地址，看是否还需要增加类似/.xxx的路径
+     * 一站式方法：加载技能 → 过滤符合条件的技能 → 构建可注入系统提示词的字符串。
+     *
      * @param workspaceDir 工作区根目录
      * @param config       可选配置
      * @return 准备好注入系统提示词的技能提示词字符串

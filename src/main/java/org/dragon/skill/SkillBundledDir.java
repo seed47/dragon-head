@@ -13,7 +13,10 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 内置技能目录解析和上下文加载。
+ * 内置技能目录解析器。
+ * 负责内置技能目录的解析和上下文加载。
+ *
+ * @since 1.0
  */
 @Slf4j
 public final class SkillBundledDir {
@@ -85,7 +88,8 @@ public final class SkillBundledDir {
     // ── 上下文 (Context) ─────────────────────────────────────────────────────
 
     /**
-     * 内置技能上下文：目录路径 + 技能名称集合。
+     * 内置技能上下文。
+     * 包含内置技能目录路径和技能名称集合。
      */
     public static class BundledSkillsContext {
         private final String dir;

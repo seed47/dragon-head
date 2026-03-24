@@ -18,7 +18,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * 插件技能解析器。
  * 解析由插件提供的技能目录。
+ *
+ * @since 1.0
  */
 @Slf4j
 public final class SkillPluginResolver {
@@ -27,7 +30,8 @@ public final class SkillPluginResolver {
     }
 
     /**
-     * 用于技能解析的最小插件清单记录。
+     * 插件清单记录。
+     * 用于技能解析的最小插件信息，包含插件ID、来源、类型、根目录和技能列表。
      */
     public static class PluginRecord {
         private final String id;

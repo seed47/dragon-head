@@ -10,6 +10,8 @@ import java.util.function.Predicate;
 /**
  * Agent 技能系统的类型定义。
  * 对应 TypeScript 中的 skills/types.ts。
+ *
+ * @since 1.0
  */
 public final class SkillTypes {
 
@@ -67,14 +69,19 @@ public final class SkillTypes {
 
     /**
      * 技能依赖的安装规范。
+     * 定义技能所需依赖的安装方式和配置。
      */
     @Value
     public static class SkillInstallSpec {
         /** 安装类型：brew | node | go | uv | download */
         String kind;
+        /** 依赖标识符 */
         String id;
+        /** 显示标签 */
         String label;
+        /** 可执行文件列表 */
         List<String> bins;
+        /** 支持的操作系统列表 */
         List<String> os;
         /** brew 公式 */
         String formula;
@@ -88,7 +95,9 @@ public final class SkillTypes {
         String archive;
         /** 是否解压 */
         Boolean extract;
+        /** 路径剥离层级数 */
         Integer stripComponents;
+        /** 目标目录 */
         String targetDir;
     }
 
@@ -98,27 +107,41 @@ public final class SkillTypes {
 
     /**
      * 解析后的 DragonHead 专属技能元数据。
+     * 包含技能的条件激活和运行环境配置。
      */
     @Value
     public static class SkillMetadata {
+        /** 是否始终激活（忽略依赖检查） */
         Boolean always;
+        /** 技能唯一键 */
         String skillKey;
+        /** 主环境变量名 */
         String primaryEnv;
+        /** 技能图标（emoji） */
         String emoji;
+        /** 技能主页链接 */
         String homepage;
+        /** 支持的操作系统列表 */
         List<String> os;
+        /** 技能依赖要求 */
         SkillRequires requires;
+        /** 技能安装规范列表 */
         List<SkillInstallSpec> install;
     }
 
     /**
      * 技能的依赖要求。
+     * 定义技能正常运行所需的环境条件。
      */
     @Value
     public static class SkillRequires {
+        /** 必须存在的可执行文件列表 */
         List<String> bins;
+        /** 任一存在的可执行文件列表 */
         List<String> anyBins;
+        /** 必须存在的环境变量列表 */
         List<String> env;
+        /** 必须为真的配置路径列表 */
         List<String> config;
     }
 

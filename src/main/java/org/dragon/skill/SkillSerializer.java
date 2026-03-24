@@ -6,9 +6,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
+ * 技能任务序列化器。
  * 按键序列化异步任务，确保每个键一次只运行一个任务。
  * 具有相同键的后续调用将在当前任务之后排队。
- * 对应 TypeScript 中的 skills/serialize.ts。
+ *
+ * @see <a href="https://github.com/xxx/skills/serialize.ts">TypeScript 对应实现</a>
+ * @since 1.0
  */
 public final class SkillSerializer {
 

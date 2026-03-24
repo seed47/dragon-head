@@ -3,22 +3,24 @@ package org.dragon.skill;
 import java.util.List;
 
 /**
- * 技能访问接口
- * 提供对 Character 私有技能的统一访问
+ * 技能访问接口。
+ * 提供对 Character 私有技能的统一访问，包括查询、注册、更新和删除操作。
  *
  * @author wyj
  * @version 1.0
+ * @since 1.0
  */
 public interface SkillAccess {
 
     /**
-     * 获取 Character ID
+     * 获取 Character ID。
      *
      * @return Character ID
+     * @since 1.0
      */
     String getCharacterId();
 
-    // ================= 单个查询 =================
+    // ================= 单个查询 (Single Query) =================
 
     /**
      * 根据 ID 获取技能
@@ -52,7 +54,7 @@ public interface SkillAccess {
      */
     Skill.SkillMetadata getMetadata(String skillId);
 
-    // ================= Batch 操作 =================
+    // ================= 批量操作 (Batch Operations) =================
 
     /**
      * 根据 ID 列表批量获取技能
@@ -85,7 +87,7 @@ public interface SkillAccess {
      */
     List<Skill> findByTags(List<String> tags);
 
-    // ================= 写入操作 =================
+    // ================= 写入操作 (Write Operations) =================
 
     /**
      * 注册技能

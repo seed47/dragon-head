@@ -7,7 +7,10 @@ import java.util.Map;
 import org.dragon.config.config.ConfigProperties;
 
 /**
- * 应用来自技能配置的环境变量覆盖。
+ * 技能环境变量覆盖管理器。
+ * 应用来自技能配置的环境变量覆盖，支持恢复原始环境变量。
+ *
+ * @since 1.0
  */
 public final class SkillEnvOverrides {
 
@@ -15,7 +18,8 @@ public final class SkillEnvOverrides {
     }
 
     /**
-     * 记录单个环境变量覆盖的记录，以便可以恢复。
+     * 环境变量更新记录。
+     * 记录单个环境变量覆盖的原始值，以便后续恢复。
      */
     private static class EnvUpdate {
         private final String key;

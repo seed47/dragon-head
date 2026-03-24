@@ -16,7 +16,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
+ * 技能 Frontmatter 解析器。
  * 解析 SKILL.md 文件中类似 YAML 的 frontmatter 并提取元数据。
+ *
+ * @since 1.0
  */
 @Slf4j
 public class SkillFrontmatterParser {
